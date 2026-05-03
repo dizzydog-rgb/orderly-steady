@@ -15,15 +15,15 @@
 ## Tasks
 
 ### Phase 1: 環境與工具安裝
-- [ ] 安裝 `vitest`, `@vue/test-utils`, `happy-dom`。
-- [ ] 設定 `vite.config.ts` 以支援 vitest。
+- [x] 安裝 `vitest`, `@vue/test-utils`, `happy-dom`。
+- [x] 設定 `vite.config.ts` 以支援 vitest。
 
 ### Phase 2: 核心演算法實作
-- [ ] 建立 `src/types/index.ts` 定義食物類別與介面。
-- [ ] 實作 `src/services/scoringAlgorithm.ts`。
-- [ ] (Optional) 建立簡單的測試驗證邏輯。
+- [x] 建立 `src/types/index.ts` 定義食物類別與介面。
+- [x] 實作 `src/services/scoringAlgorithm.ts`。
+- [x] (Optional) 建立簡單的測試驗證邏輯。
 
 ### Phase 3: 前端畫面實作
-- [ ] 修改 `src/App.vue` 建立基礎操作介面。
-- [ ] 串接 `scoringAlgorithm.ts` 實現即時評分。
-- [ ] 簡易視覺回饋（根據分數變色）。
+- [x] 修改 `src/App.vue` 建立基礎操作介面。
+- [x] 串接 `scoringAlgorithm.ts` 實現即時評分。
+- [x] 簡易視覺回饋（根據分數變色）。
