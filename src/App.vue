@@ -1,34 +1,38 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { FoodType } from './types';
-import type { IMealItem } from './types';
-import { calculateMealScore } from './services/scoringAlgorithm';
+import { useGlucoseScore } from './composables/useGlucoseScore';
+import gsap from 'gsap';
 
-const mealSequence = ref<IMealItem[]>([]);
+const { 
+  mealSequence, 
+  scoreResult, 
+  scoreColor, 
+  addFood, 
+  clearSequence 
+} = useGlucoseScore();
 
-const scoreResult = computed(() => {
-  const types = mealSequence.value.map(item => item.type);
-  return calculateMealScore(types);
+const displayScore = ref(0);
+let ctx: gsap.Context;
+
+onMounted(() => {
+  ctx = gsap.context(() => {});
 });
 
-const scoreColor = computed(() => {
-  const score = scoreResult.value.totalScore;
-  if (score >= 80) return '#4ade80'; // Green
-  if (score >= 60) return '#facc15'; // Yellow
-  return '#f87171'; // Red
+onUnmounted(() => {
+  if (ctx) ctx.revert();
 });
 
-function addFood(type: FoodType, label: string) {
-  mealSequence.value.push({
-    id: Math.random().toString(36).substring(7),
-    type,
-    label,
+watch(() => scoreResult.value.totalScore, (newScore) => {
+  ctx.add(() => {
+    gsap.to(displayScore, {
+      duration: 0.5,
+      value: newScore,
+      roundProps: 'value',
+      ease: 'power2.out'
+    });
   });
-}
-
-function clearSequence() {
-  mealSequence.value = [];
-}
+});
 
 const foodButtons = [
   { type: FoodType.FIBER, label: '膳食纖維 (F)', class: 'btn-fiber' },
@@ -41,10 +45,10 @@ const foodButtons = [
 <template>
   <div id="center">
     <h1>控糖進食順序測試</h1>
-    
+
     <div class="score-card" :style="{ borderColor: scoreColor }">
       <div class="score-label">當前評分</div>
-      <div class="score-value" :style="{ color: scoreColor }">{{ scoreResult.totalScore }}</div>
+      <div class="score-value" :style="{ color: scoreColor }">{{ displayScore }}</div>
     </div>
 
     <div class="controls">
@@ -81,6 +85,13 @@ const foodButtons = [
           {{ foodButtons.find(b => b.type === item.type)?.label }}: 
           {{ item.baseScore }} x {{ item.modifier }} = <strong>{{ item.finalItemScore }}</strong>
         </li>
+      </ul>
+    </div>
+
+    <div class="tips-container" v-if="scoreResult.tips.length > 0">
+      <h3>💡 建議與提醒</h3>
+      <ul>
+        <li v-for="(tip, index) in scoreResult.tips" :key="index">{{ tip }}</li>
       </ul>
     </div>
   </div>
@@ -194,6 +205,31 @@ const foodButtons = [
   margin-bottom: 5px;
   padding-bottom: 5px;
   border-bottom: 1px dashed var(--border);
+}
+
+.tips-container {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(250, 204, 21, 0.1);
+  border-radius: 8px;
+  text-align: left;
+  border-left: 4px solid #facc15;
+}
+
+.tips-container h3 {
+  margin-top: 0;
+  font-size: 1.1rem;
+  color: #854d0e;
+}
+
+.tips-container ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.tips-container li {
+  margin-bottom: 8px;
+  color: #854d0e;
 }
 
 .empty-msg {

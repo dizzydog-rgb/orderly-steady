@@ -1,0 +1,9 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: glucose_db
+      MYSQL_ROOT_PASSWORD: your_password
+    ports:
+      - "3306:3306"

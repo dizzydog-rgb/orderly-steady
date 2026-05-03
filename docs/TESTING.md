@@ -3,40 +3,32 @@
 本文件定義專案的測試策略、工具與規範。
 
 ## 1. 測試策略
-我們採用測試金字塔模型，優先確保核心演算法的單元測試覆蓋率。
+我們優先確保核心演算法與健康建議邏輯的單元測試覆蓋率。
 
-- **單元測試 (Unit Tests)**: 針對 `src/services/` 下的純函數（特別是評分演算法）。
-- **組件測試 (Component Tests)**: 針對 `src/components/` 下的關鍵 UI 交互。
-- **端到端測試 (E2E Tests)**: 針對完整的進食記錄流程。
+- **單元測試 (Unit Tests)**: 針對 `src/services/scoringAlgorithm.ts`。
+  - 驗證各食物組合的總分計算。
+  - 驗證 `tips` 陣列在不同情境下的產出內容。
 
-## 2. 測試工具
-- **測試框架**: Vitest (建議)
-- **測試庫**: `@vue/test-utils`
-- **瀏覽器模擬**: `happy-dom` 或 `jsdom`
+## 2. 執行測試
+```bash
+# 執行所有測試 (Vitest)
+npm run test
+```
 
 ## 3. 撰寫規範
-- **檔案命名**: `[filename].spec.ts` 或 `[filename].test.ts`。
-- **存放位置**: 與被測試檔案同目錄下的 `__tests__/` 資料夾。
 - **結構**:
   ```typescript
   describe('Scoring Algorithm', () => {
-    it('should give 100 points for perfect order', () => {
-      // test logic
+    it('應正確產生健康建議 (Tips)', () => {
+      const sequence = [FoodType.COMPLEX_CARB];
+      const result = calculateMealScore(sequence);
+      expect(result.tips).toContain('建議加入植物纖維...');
     });
   });
   ```
 
-## 4. 執行測試
-```bash
-# 執行所有測試
-npm run test
-
-# 執行測試並監控變動
-npm run test:watch
-```
-
-## 5. 常見測試情境 (Test Cases)
-### 進食評分演算法
-- [ ] 只有一種食物時的分數計算。
-- [ ] 完全相反順序（精緻糖最先）的扣分邏輯。
-- [ ] 只有纖維與碳水時的緩衝邏輯驗證。
+## 4. 常見測試情境 (Test Cases)
+- [x] 正確順序 (F -> P -> CC) 的高分驗證。
+- [x] 錯誤順序 (CC -> F) 的扣分與 Tips 驗證。
+- [x] 空序列的邊界處理。
+- [x] 精緻糖 (SC) 的特殊警示 Tips。

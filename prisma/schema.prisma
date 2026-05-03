@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// 食物類別列舉
+model FoodDictionary {
+  id        String   @id @default(uuid())
+  label     String   @unique // 食物名稱
+  type      FoodType // 判定出來的食物類別
+  createdAt DateTime @default(now())
+
+  @@index([label])
+}
+
+enum FoodType {
+  FIBER
+  PROTEIN
+  COMPLEX_CARB
+  SIMPLE_CARB
+}
+
+model User {
+  id        String       @id @default(uuid())
+  email     String       @unique
+  name      String?
+  records   MealRecord[] // 一對多：一個使用者有多筆進食紀錄
+  
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([email]) // 優化查詢速率
+}
+
+model MealRecord {
+  id          String     @id @default(uuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  totalScore  Int        // 該餐點的總分數
+  tips        Json?      // 儲存產生的衛教建議 (字串陣列)
+  recordedAt  DateTime   @default(now()) // 紀錄時間
+  
+  foodItems   FoodItem[] // 一對多：一筆紀錄包含多個食物品項 (代表進食序列)
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([userId, recordedAt]) // 建立複合索引：優化高頻的「特定使用者」與「時間範圍」查詢
+}
+
+model FoodItem {
+  id            String     @id @default(uuid())
+  mealRecordId  String
+  mealRecord    MealRecord @relation(fields: [mealRecordId], references: [id], onDelete: Cascade)
+  
+  type          FoodType   // 食物類別
+  label         String     // 食物名稱
+  sequenceIndex Int        // 進食順序
+  
+  baseScore     Int        // 基礎分數
+  modifier      Float      // 權重係數
+  finalScore    Int        // 計算後的該項得分
+  
+  createdAt     DateTime   @default(now())
+
+  @@index([mealRecordId]) // 幫助快速拉取某筆紀錄的所有食物品項
+}

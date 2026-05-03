@@ -21,4 +21,5 @@ export interface IScoringResult {
     finalItemScore: number;
     type: FoodType;
   }[];
+  tips: string[];
 }
