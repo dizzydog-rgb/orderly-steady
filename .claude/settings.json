@@ -1,6 +1,12 @@
 {
   "permissions": {
-    "allow": ["Edit(~/.npm/**)", "Read(~/.npm/**)"],
+    "allow": [
+      "Edit(~/.npm/**)",
+      "Read(~/.npm/**)",
+      "Write(~/Library/pnpm/**)",
+      "Edit(~/Library/pnpm/**)",
+      "Read(~/Library/pnpm/**)"
+    ],
     "deny": [
       "Bash(rm -rf *)",
       "Bash(sudo *)",
@@ -16,9 +22,11 @@
       "allowedDomains": [
         "registry.npmjs.org",
         "*.npmjs.org",
+        "registry.yarnpkg.com",
         "*.github.com",
         "github.com",
-        "*.githubusercontent.com"
+        "*.githubusercontent.com",
+        "localhost:*"
       ]
     }
   }
