@@ -37,6 +37,16 @@
 - **槽位配分**: Slot1（第一口）50 分、Slot2（第二口）30 分、Slot3（第三口）20 分；各槽依食物類別查表得分，空槽得 0 分。
 - **狀態**: 🟢 已完成
 
-## 3. 歷史趨勢視覺化 (Analytics) - *未來規劃*
+## 3. 會員系統與 JWT 驗證 (Authentication)
+- **行為描述**：使用者可以註冊帳號、以 email + 密碼登入，取得 Access Token（15 分鐘有效）與 Refresh Token（7 天有效）存取受保護的 API。
+- **目前進度**：
+  - 🟢 `POST /api/auth/register` — 新用戶註冊（bcrypt 密碼雜湊）
+  - 🟢 `POST /api/auth/login` — 登入，回傳 JWT token 對
+  - 🟢 `POST /api/auth/refresh` — Refresh Token 輪換換發（舊 token 立即失效）
+  - 🟢 `GET /api/auth/me` — 取得目前登入使用者資訊（需 Bearer Token）
+  - 🟢 `authMiddleware` — JWT 驗證中介層，可套用於任意受保護路由
+- **狀態**: 🟢 已完成
+
+## 4. 歷史趨勢視覺化 (Analytics) - *未來規劃*
 - **行為描述**: 使用圖表（如 Chart.js）展示使用者過去一段時間內的得分趨勢，並根據評分結果觸發差異化 GSAP 動畫效果。
 - **狀態**: ⚪ 待規劃

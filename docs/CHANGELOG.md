@@ -2,6 +2,19 @@
 
 所有對「控糖網站」專案的重要變更都將記錄在此文件中。
 
+## [0.4.0] - 2026-05-16
+
+### Added
+- **會員系統**：`POST /api/auth/register`、`POST /api/auth/login`、`POST /api/auth/refresh`、`GET /api/auth/me` 四支端點，完整 JWT 驗證流程。
+- **JWT 機制**：Access Token（15m，`JWT_SECRET`）+ Refresh Token（7d，`JWT_REFRESH_SECRET`），登入後寫入 DB，refresh 時輪換，舊 token 立即失效（防 replay）。
+- **bcrypt 密碼雜湊**：saltRounds=10，response 一律不回傳 `password` 與 `refreshToken` 欄位。
+- **authMiddleware**：從 `Authorization: Bearer` header 驗證 Access Token，注入 `req.user`，可套用至任意路由。
+- **Prisma Schema 擴充**：User 新增 `password String?`（bcrypt hash）、`refreshToken String? @db.Text`（TEXT 型別，避免 VARCHAR 191 上限）。
+
+### Fixed
+- `generateRefreshToken` 加入 `jti: crypto.randomUUID()`，確保同一秒內產生的 token 字串不同，修正輪換機制失效問題。
+- `refreshToken` 欄位由 `VARCHAR(191)` 改為 `TEXT`，修正 JWT 字串超長導致的 500 錯誤。
+
 ## [0.3.0] - 2026-05-16
 
 ### Added

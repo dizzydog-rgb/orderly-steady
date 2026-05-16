@@ -28,15 +28,17 @@ enum FoodType {
 }
 
 model User {
-  id        String       @id @default(uuid())
-  email     String       @unique
-  name      String?
-  records   MealRecord[] // 一對多：一個使用者有多筆進食紀錄
-  
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id           String       @id @default(uuid())
+  email        String       @unique
+  name         String?
+  password     String?      // bcrypt hash；null = 舊有自動建立的使用者
+  refreshToken String?      @db.Text // JWT 字串較長，使用 TEXT 型別
+  records      MealRecord[]
 
-  @@index([email]) // 優化查詢速率
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
 }
 
 model MealRecord {
