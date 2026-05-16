@@ -25,3 +25,24 @@ export interface IScoringResult {
   breakdown: ISlotBreakdown[];
   tips: string[];
 }
+
+export interface IUser {
+  id: string;
+  email: string;
+  name: string | null;
+}
+
+export interface IFoodItemRecord {
+  label: string;
+  type: string;
+  sequenceIndex: number;
+  finalScore: number;
+}
+
+export interface IMealRecord {
+  id: string;
+  totalScore: number;
+  tips: string[] | null;
+  recordedAt: string;
+  foodItems: IFoodItemRecord[];
+}
