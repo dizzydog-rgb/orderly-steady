@@ -26,28 +26,33 @@ npx vitest run src/services/__tests__/scoringAlgorithm.spec.ts  # 執行單一�
 ## 架構
 
 ### 雙服務架構
+
 - **前端** (`src/`): Vite dev server，純靜態，透過 `/api/*` 呼叫後端
 - **後端** (`server/`): Express，`POST /api/meals` 為核心端點，處理 AI 分類 → 評分 → 寫入資料庫
 
 ### 評分演算法（核心邏輯）
+
 演算法同時存在於前後端，**兩份必須保持同步**：
+
 - `src/services/scoringAlgorithm.ts` — 前端即時計算（使用者操作時）
 - `server/services/scoringAlgorithm.ts` — 後端儲存前最終計算
 
-| 類別 | 代碼 | 基礎分 | 備註 |
-|---|---|---|---|
-| 膳食纖維 | `F` | 40 | 最佳首位 |
-| 蛋白質 | `P` | 30 | |
-| 複合碳水 | `CC` | 20 | |
-| 精緻糖 | `SC` | 10 | |
+| 類別     | 代碼 | 基礎分 | 備註     |
+| -------- | ---- | ------ | -------- |
+| 膳食纖維 | `F`  | 40     | 最佳首位 |
+| 蛋白質   | `P`  | 30     |          |
+| 複合碳水 | `CC` | 20     |          |
+| 精緻糖   | `SC` | 10     |          |
 
 modifier 規則：碳水出現在纖維之前 → ×0.5（扣分）；前兩位含纖維且碳水在第三位以後 → ×1.2（加成）。
 
 ### AI 分類與快取
+
 `server/services/ai.ts` 目前使用**關鍵字規則**（`mockAIClassify`）模擬 LLM 分類，尚未串接真實 API。
 分類結果寫入 `FoodDictionary` 資料表作為快取（label 唯一索引）；下次相同食物名稱直接從 DB 讀取，跳過 AI 呼叫。
 
 ### 資料模型（Prisma）
+
 `User` → `MealRecord`（含 totalScore、tips JSON）→ `FoodItem`（含 sequenceIndex、modifier）。
 `MealRecord` 有 `(userId, recordedAt)` 複合索引，`FoodItem` 有 `mealRecordId` 索引。
 
@@ -61,6 +66,7 @@ modifier 規則：碳水出現在纖維之前 → ×0.5（扣分）；前兩位�
 
 ## 必要遵守項目
 
+- 如果你有任何問題，請跟我討論
 - 後端高頻查詢（使用者 ID、時間範圍）必須建立資料庫索引（Prisma schema 已有 `@@index`，新查詢模式須一併新增）
 - 前端以 Pinia 快取已拉取的歷史紀錄，避免重複發起請求
 - Chart.js (vue-chartjs) 繪製分數趨勢圖時必須實作資料載入中的 Loading 狀態
