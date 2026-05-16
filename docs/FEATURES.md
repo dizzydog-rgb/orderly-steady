@@ -21,12 +21,21 @@
 - **狀態**: 🟢 已完成
 
 ## 2. 後端服務與資料持久化 (Backend Infrastructure)
-- **行為描述**: 建立 Node.js (Express) 後端架構，整合 Prisma 與 MySQL。
-- **目前進度**: 
+- **行為描述**: Node.js (Express) 後端架構，整合 Prisma ORM 與 MySQL，提供飲食紀錄的儲存與查詢。
+- **目前進度**:
   - 🟢 基礎架構建立
   - 🟢 Docker 容器化資料庫
-  - 🟡 API 資料存取 (實作中)
-- **狀態**: 🟡 進行中
+  - 🟢 Prisma Schema 設計與 Migration（User、MealRecord、FoodItem、FoodDictionary）
+  - 🟢 `POST /api/meals` — 建立飲食紀錄（含 email upsert、AI 分類、評分計算、寫入 DB）
+  - 🟢 `GET /api/meals/:userId` — 查詢使用者歷史紀錄（依時間倒序，含 foodItems）
+  - 🟢 FoodDictionary 快取機制（AI 分類結果快取至 DB，避免重複呼叫）
+  - 🟢 食物資料庫初始化（50 筆常見食物預設分類）
+- **狀態**: 🟢 已完成
+
+## 2.1 評分系統重設計（槽位配分制）
+- **行為描述**: 前端固定三個欄位（依序解鎖），總分 100 分制；唯一滿分路徑為 Fiber → Protein → Complex Carb。
+- **槽位配分**: Slot1（第一口）50 分、Slot2（第二口）30 分、Slot3（第三口）20 分；各槽依食物類別查表得分，空槽得 0 分。
+- **狀態**: 🟢 已完成
 
 ## 3. 歷史趨勢視覺化 (Analytics) - *未來規劃*
 - **行為描述**: 使用圖表（如 Chart.js）展示使用者過去一段時間內的得分趨勢，並根據評分結果觸發差異化 GSAP 動畫效果。

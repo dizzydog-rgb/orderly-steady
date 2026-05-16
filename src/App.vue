@@ -81,9 +81,9 @@ const foodButtons = [
     <div class="analysis" v-if="scoreResult.breakdown.length > 0">
       <h3>得分分析</h3>
       <ul>
-        <li v-for="(item, index) in scoreResult.breakdown" :key="index">
-          {{ foodButtons.find(b => b.type === item.type)?.label }}: 
-          {{ item.baseScore }} x {{ item.modifier }} = <strong>{{ item.finalItemScore }}</strong>
+        <li v-for="slot in scoreResult.breakdown" :key="slot.slot">
+          第{{ slot.slot }}口 — {{ foodButtons.find(b => b.type === slot.input)?.label ?? '（未填）' }}：
+          <strong>{{ slot.score }}</strong> / {{ slot.slotMax }}
         </li>
       </ul>
     </div>

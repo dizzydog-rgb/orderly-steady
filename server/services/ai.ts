@@ -7,6 +7,10 @@ import prisma from "../db";
  */
 async function mockAIClassify(label: string): Promise<FoodType> {
   const l = label.toLowerCase();
+  // 完整詞彙優先，避免「蛋糕」被「蛋」誤判
+  if (l.includes("蛋糕") || l.includes("餅乾") || l.includes("糖") || l.includes("甜") || l.includes("飲")) {
+    return FoodType.SIMPLE_CARB;
+  }
   if (l.includes("菜") || l.includes("纖維") || l.includes("菇") || l.includes("筍")) {
     return FoodType.FIBER;
   }
@@ -16,10 +20,6 @@ async function mockAIClassify(label: string): Promise<FoodType> {
   if (l.includes("飯") || l.includes("麵") || l.includes("薯") || l.includes("玉米") || l.includes("地瓜")) {
     return FoodType.COMPLEX_CARB;
   }
-  if (l.includes("糖") || l.includes("甜") || l.includes("飲") || l.includes("蛋糕") || l.includes("餅乾")) {
-    return FoodType.SIMPLE_CARB;
-  }
-  // Default fallback
   return FoodType.SIMPLE_CARB;
 }
 

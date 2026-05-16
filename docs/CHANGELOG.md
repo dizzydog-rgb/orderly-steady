@@ -2,6 +2,25 @@
 
 所有對「控糖網站」專案的重要變更都將記錄在此文件中。
 
+## [0.3.0] - 2026-05-16
+
+### Added
+- **飲食紀錄 API**：`POST /api/meals` 接收 `email` + `foods`（1–3 項），以 `upsert` 自動建立使用者，完成 AI 分類 → 評分 → 寫入 DB 完整流程。
+- **歷史查詢 API**：`GET /api/meals/:userId` 回傳該使用者所有紀錄，依 `recordedAt` 降冪排序，含 `foodItems` 明細。
+- **FoodDictionary 快取**：AI 分類結果持久化至 DB；相同食物名稱再次輸入時直接命中快取，跳過 AI 呼叫。
+- **食物資料庫初始化**：`npm run seed` 寫入 50 筆常見食物預設分類（FIBER×18、PROTEIN×16、COMPLEX_CARB×10、SIMPLE_CARB×6）。
+- **Prisma Migration**：完成首次 migration，建立 `User`、`MealRecord`、`FoodItem`、`FoodDictionary` 四張資料表及複合索引。
+
+### Changed
+- **評分系統重設計**：由舊版加權 modifier 制改為槽位配分制（Slot1=50、Slot2=30、Slot3=20），唯一滿分路徑為 Fiber → Protein → Complex Carb = 100 分；前端固定三欄依序解鎖。
+- **型別重構**：`IScoringResult.breakdown` 由 `{ baseScore, modifier, finalItemScore }` 改為 `ISlotBreakdown { slot, input, slotMax, score }`，前後端型別定義同步。
+- **API 輸入格式**：`POST /api/meals` 由接收 `userId` 改為接收 `email`，後端自動 upsert 使用者。
+- **Mock AI 修正**：調整關鍵字判斷順序，完整詞彙（`蛋糕`）優先於單字（`蛋`），避免誤判為 PROTEIN。
+
+### Fixed
+- 移除 `server/routes/meals.ts` 的 `tips as any` 強制轉型。
+- `App.vue` breakdown 顯示欄位更新，消除 TypeScript 型別錯誤。
+
 ## [0.2.0] - 2026-05-03
 
 ### Added

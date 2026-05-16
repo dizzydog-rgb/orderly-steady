@@ -13,13 +13,15 @@ export interface IMealItem {
   label: string;
 }
 
+export interface ISlotBreakdown {
+  slot: 1 | 2 | 3;
+  input: FoodType | null;
+  slotMax: 50 | 30 | 20;
+  score: number;
+}
+
 export interface IScoringResult {
   totalScore: number;
-  breakdown: {
-    baseScore: number;
-    modifier: number;
-    finalItemScore: number;
-    type: FoodType;
-  }[];
+  breakdown: ISlotBreakdown[];
   tips: string[];
 }

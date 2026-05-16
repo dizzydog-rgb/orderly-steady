@@ -1,84 +1,67 @@
 import { FoodType } from "@prisma/client";
 
+export interface ISlotBreakdown {
+  slot: 1 | 2 | 3;
+  input: FoodType | null;
+  slotMax: 50 | 30 | 20;
+  score: number;
+}
+
 export interface IScoringResult {
   totalScore: number;
-  breakdown: {
-    baseScore: number;
-    modifier: number;
-    finalItemScore: number;
-    type: FoodType;
-  }[];
+  breakdown: ISlotBreakdown[];
   tips: string[];
 }
 
-const BASE_SCORES: Record<FoodType, number> = {
-  [FoodType.FIBER]: 40,
-  [FoodType.PROTEIN]: 30,
-  [FoodType.COMPLEX_CARB]: 20,
-  [FoodType.SIMPLE_CARB]: 10,
+const SLOT_MAX = [50, 30, 20] as const;
+
+const SCORE_MATRIX: Record<FoodType, readonly [number, number, number]> = {
+  [FoodType.FIBER]:        [50, 10,  5],
+  [FoodType.PROTEIN]:      [30, 30,  8],
+  [FoodType.COMPLEX_CARB]: [15, 18, 20],
+  [FoodType.SIMPLE_CARB]:  [ 5,  5,  5],
 };
 
-export function calculateMealScore(sequence: FoodType[]): IScoringResult {
+type MealSequence = [FoodType] | [FoodType, FoodType] | [FoodType, FoodType, FoodType];
+
+export function calculateMealScore(sequence: MealSequence): IScoringResult {
   let totalScore = 0;
-  const breakdown: IScoringResult["breakdown"] = [];
+  const breakdown: ISlotBreakdown[] = [];
   const tips: string[] = [];
 
-  if (sequence.length === 0) {
-    return { totalScore: 0, breakdown: [], tips: [] };
+  for (let i = 0; i < 3; i++) {
+    const slotIndex = i as 0 | 1 | 2;
+    const input = sequence[slotIndex] ?? null;
+    const slotMax = SLOT_MAX[slotIndex];
+    const score = input !== null ? SCORE_MATRIX[input][slotIndex] : 0;
+
+    totalScore += score;
+    breakdown.push({
+      slot: (i + 1) as 1 | 2 | 3,
+      input,
+      slotMax,
+      score,
+    });
   }
 
-  const hasFiberEarly = sequence.slice(0, 2).includes(FoodType.FIBER);
-  const fiberIndex = sequence.indexOf(FoodType.FIBER);
-  const carbIndices = sequence
-    .map((t, i) => (t === FoodType.COMPLEX_CARB || t === FoodType.SIMPLE_CARB ? i : -1))
-    .filter((i) => i !== -1);
+  // Tips
+  const [slot1, slot2, slot3] = sequence;
 
-  // Tips Logic
-  if (fiberIndex === -1) {
-    tips.push("建議加入膳食纖維（如蔬菜），能有效減緩血糖上升。");
-  } else if (fiberIndex > 0) {
-    tips.push("嘗試將「膳食纖維」放在第一順位，控糖效果更佳。");
+  if (slot1 !== FoodType.FIBER) {
+    tips.push("將「膳食纖維」放在第一口，能有效減緩餐後血糖上升。");
   }
-
-  if (carbIndices.length > 0) {
-    const firstCarbIndex = carbIndices[0];
-    if (fiberIndex === -1 || fiberIndex > firstCarbIndex) {
-      tips.push("在攝取碳水化合物之前，先吃點蔬菜建立緩衝吧！");
-    }
-  }
-
-  if (sequence[0] === FoodType.SIMPLE_CARB) {
+  if (slot1 === FoodType.SIMPLE_CARB) {
     tips.push("空腹攝取精緻糖會導致血糖劇烈波動，建議放在餐後。");
   }
+  if (sequence.length >= 2 && slot2 !== FoodType.PROTEIN && slot1 === FoodType.FIBER) {
+    tips.push("纖維之後搭配蛋白質，控糖效果更佳。");
+  }
+  if (sequence.length >= 2 && (slot2 === FoodType.SIMPLE_CARB || slot2 === FoodType.COMPLEX_CARB) && slot1 !== FoodType.FIBER) {
+    tips.push("在攝取碳水化合物之前，先吃點蔬菜建立緩衝吧！");
+  }
+  if (sequence.length === 3 && slot3 === FoodType.SIMPLE_CARB) {
+    tips.push("以複合碳水取代精緻糖作為收尾，血糖曲線會更平穩。");
+  }
 
-  sequence.forEach((type, index) => {
-    const baseScore = BASE_SCORES[type];
-    let modifier = 1.0;
-
-    // 1. 早熟扣分 (Premature Penalty): 碳水出現在纖維之前
-    if (type === FoodType.COMPLEX_CARB || type === FoodType.SIMPLE_CARB) {
-      if (fiberIndex === -1 || fiberIndex > index) {
-        modifier = 0.5;
-      } else if (hasFiberEarly && index >= 2) {
-        // 2. 緩衝加成 (Buffer Bonus): 前兩項有纖維且目前是第三項以後
-        modifier = 1.2;
-      }
-    }
-
-    const finalItemScore = Math.round(baseScore * modifier);
-    totalScore += finalItemScore;
-
-    breakdown.push({
-      baseScore,
-      modifier,
-      finalItemScore,
-      type,
-    });
-  });
-
-  return {
-    totalScore,
-    breakdown,
-    tips,
-  };
+  return { totalScore, breakdown, tips };
 }
