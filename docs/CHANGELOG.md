@@ -1,6 +1,30 @@
 # Changelog
 
-所有對「控糖網站」專案的重要變更都將記錄在此文件中。
+所有對「Orderly & Steady」專案的重要變更都將記錄在此文件中。
+
+## [0.5.0] - 2026-05-16
+
+### Added
+- **Vue Router 三頁面架構**：`/login`（公開）、`/`（需登入）、`/member`（需登入），`beforeEach` guard 攔截未登入請求並自動導向 `/login`。
+- **JWT 懶刷新策略**：accessToken 存記憶體（不寫 localStorage），refreshToken 存 `localStorage`；收到 401 才呼叫 `/api/auth/refresh`，成功後自動重試原請求，失敗則登出並跳回 `/login`。
+- **`useAuth` composable**：module singleton，管理 `user`、`accessToken`、`isLoggedIn`，提供 `login`、`register`、`logout`、`refreshAccessToken`、`getAuthHeaders`。
+- **`fetchWithAuth` utility**：統一 API 請求入口，自動附加 Bearer header，401 時自動換發並重試。
+- **`useHistory` composable**：module singleton，管理歷史紀錄快取；`fetchHistory` 拉取、`prependRecord` 樂觀插入最新紀錄不重新 fetch。
+- **NavBar 元件**：左側品牌 Logo、右側已登入顯示 👤 icon（router-link → `/member`）。
+- **LoginView**：登入 / 註冊雙 tab，行內錯誤訊息，成功後跳轉 `/`。
+- **HomeView**：三格文字輸入依序解鎖（第一口 → 第二口 → 第三口），送出後顯示評分、GSAP 差異化動畫、breakdown 與 tips，下方顯示歷史紀錄卡片（skeleton loading）。
+- **MemberView**：顯示 email、name，登出按鈕清除狀態並跳回 `/login`。
+- **Vite `/api` proxy**：開發環境將 `/api/*` 代理至 `http://localhost:3000`。
+
+### Changed
+- **網站更名**：「GlucoseFlow」→「Orderly & Steady」（NavBar logo、登入頁標題、瀏覽器 tab title）。
+- **口數標籤**：輸入欄與評分 breakdown 一律使用中文數字（第一口 / 第二口 / 第三口）。
+- **`src/App.vue`**：大幅簡化，僅保留 `<NavBar />` + `<RouterView />`。
+- **`src/types/index.ts`**：新增 `IUser`、`IFoodItemRecord`、`IMealRecord` 介面。
+
+### Fixed
+- `HomeView` 送出後顯示「提交失敗」：API 回傳 key 為 `analysis`，前端誤讀 `data.score`，已統一更正。
+- `useHistory` 歷史紀錄不顯示：GET `/api/meals/:userId` 回傳 `{ records: [] }` 物件，前端直接當陣列使用，已修正為正確解析 `data.records`。
 
 ## [0.4.0] - 2026-05-16
 
