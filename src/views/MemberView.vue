@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const isLoggingOut = ref(false);
 
 async function handleLogout() {
+  isLoggingOut.value = true;
   await authStore.logout();
   router.push('/login');
 }
@@ -26,7 +29,9 @@ async function handleLogout() {
 
       <div class="actions">
         <router-link to="/" class="back-link">← 返回首頁</router-link>
-        <button class="logout-btn" @click="handleLogout">登出</button>
+        <button class="logout-btn" @click="handleLogout" :disabled="isLoggingOut">
+          {{ isLoggingOut ? '登出中...' : '登出' }}
+        </button>
       </div>
     </div>
   </div>

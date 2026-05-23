@@ -59,7 +59,7 @@ async function handleSubmit() {
         <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
 
         <button type="submit" class="submit-btn" :disabled="isLoading">
-          {{ isLoading ? '處理中...' : (tab === 'login' ? '登入' : '註冊') }}
+          {{ isLoading ? '登入中...' : (tab === 'login' ? '登入' : '註冊') }}
         </button>
       </form>
     </div>

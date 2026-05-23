@@ -57,6 +57,16 @@ export const useAuthStore = defineStore('auth', {
           }
           const data = await res.json();
           this.accessToken = data.accessToken;
+
+          const meRes = await fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${data.accessToken}` },
+            credentials: 'include',
+          });
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            this.user = meData.user;
+          }
+
           return true;
         } catch {
           this._clearState();

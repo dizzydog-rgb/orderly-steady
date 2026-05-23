@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import { useAuthStore } from '../stores/auth';
+import ThemeSwitcher from './ThemeSwitcher.vue';
+import oasLogo from '../assets/oas_logo.png';
 
 const authStore = useAuthStore();
 </script>
 
 <template>
   <nav class="navbar">
-    <span class="logo">Orderly & Steady</span>
-    <router-link v-if="authStore.isLoggedIn" to="/member" class="user-icon" title="會員">👤</router-link>
+    <router-link to="/"><img class="logo" :src="oasLogo" alt="Orderly & Steady" /></router-link>
+    <div class="nav-actions">
+      <ThemeSwitcher />
+      <router-link v-if="authStore.isLoggedIn" to="/member" class="user-icon" title="會員">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </router-link>
+    </div>
   </nav>
 </template>
 
@@ -25,14 +35,21 @@ const authStore = useAuthStore();
 }
 
 .logo {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #4ade80;
-  letter-spacing: 0.03em;
+  height: 32px;
+  width: auto;
+  display: block;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .user-icon {
-  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  color: var(--text-h);
   text-decoration: none;
   transition: opacity 0.2s;
 }

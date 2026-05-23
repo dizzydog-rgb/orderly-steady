@@ -7,7 +7,7 @@ import { fetchWithAuth } from '../utils/fetchWithAuth';
 import type { IMealRecord } from '../types';
 
 const authStore = useAuthStore();
-const { records, isLoading, fetchHistory, prependRecord } = useHistory();
+const { records, isLoading, error, fetchHistory, prependRecord } = useHistory();
 
 const slot1 = ref('');
 const slot2 = ref('');
@@ -168,7 +168,16 @@ function formatDate(iso: string): string {
         <div class="skeleton" v-for="i in 3" :key="i"></div>
       </div>
 
-      <div v-else-if="records.length === 0" class="empty-msg">尚無歷史紀錄</div>
+      <div v-else-if="error" class="error-state">
+        <p class="error-text">{{ error }}</p>
+        <button class="retry-btn" @click="fetchHistory">重試</button>
+      </div>
+
+      <div v-else-if="records.length === 0" class="empty-guide">
+        <p class="empty-icon">🥗</p>
+        <p class="empty-title">還沒有紀錄</p>
+        <p class="empty-hint">填寫上方表單，記錄今天第一餐！</p>
+      </div>
 
       <div v-else class="record-list">
         <div v-for="r in records" :key="r.id" class="record-card">
@@ -343,7 +352,64 @@ h2, h3 {
   50% { opacity: 1; }
 }
 
-.empty-msg { color: #666; font-size: 0.9rem; font-style: italic; }
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 16px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 10px;
+}
+
+.error-text {
+  color: #f87171;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.retry-btn {
+  padding: 6px 18px;
+  background: none;
+  border: 1px solid #f87171;
+  color: #f87171;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retry-btn:hover {
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.empty-guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 32px 16px;
+  color: #666;
+}
+
+.empty-icon {
+  font-size: 2.4rem;
+  margin: 0;
+}
+
+.empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #888;
+  margin: 0;
+}
+
+.empty-hint {
+  font-size: 0.85rem;
+  color: #555;
+  margin: 0;
+}
 
 .record-list { display: flex; flex-direction: column; gap: 10px; }
 
