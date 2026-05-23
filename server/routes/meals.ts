@@ -59,7 +59,7 @@ router.post("/", async (req, res) => {
           }),
         },
       },
-      include: { foodItems: true },
+      include: { foodItems: { orderBy: { sequenceIndex: 'asc' } } },
     });
 
     res.status(201).json({
