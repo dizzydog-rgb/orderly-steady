@@ -50,7 +50,7 @@ async function handleLogout() {
   width: 100%;
   max-width: 420px;
   background: var(--social-bg, #242424);
-  border: 1px solid var(--border, #333);
+  border: 1px solid var(--border-color, #333);
   border-radius: 16px;
   padding: 36px 32px;
 }
@@ -65,7 +65,7 @@ h2 {
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid var(--border, #333);
+  border-bottom: 1px solid var(--border-color, #333);
 }
 
 .label {

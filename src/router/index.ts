@@ -3,9 +3,11 @@ import { useAuthStore } from '../stores/auth';
 import LoginView from '../views/LoginView.vue';
 import HomeView from '../views/HomeView.vue';
 import MemberView from '../views/MemberView.vue';
+import WhyView from '../views/WhyView.vue';
 
 const routes = [
-  { path: '/login', component: LoginView, meta: { public: true } },
+  { path: '/login', component: LoginView, meta: { public: true, authRedirect: true } },
+  { path: '/why', component: WhyView, meta: { public: true } },
   { path: '/', component: HomeView },
   { path: '/member', component: MemberView },
 ];
@@ -19,7 +21,7 @@ router.beforeEach(async (to) => {
   const authStore = useAuthStore();
 
   if (to.meta.public) {
-    if (authStore.isLoggedIn) return '/';
+    if (to.meta.authRedirect && authStore.isLoggedIn) return '/';
     return true;
   }
 

@@ -112,7 +112,7 @@ function formatDate(iso: string): string {
   <div class="home-page">
     <!-- 輸入區 -->
     <section class="input-section">
-      <h2>記錄本餐進食順序</h2>
+      <h3>記錄本餐進食順序</h3>
       <div class="slots">
         <div class="slot">
           <label>第一口</label>
@@ -235,7 +235,7 @@ h2, h3 {
 .slot input {
   padding: 10px 14px;
   background: var(--social-bg, #242424);
-  border: 1px solid var(--border, #444);
+  border: 1px solid var(--border-color, #444);
   border-radius: 8px;
   color: inherit;
   font-size: 0.95rem;
@@ -315,7 +315,7 @@ h2, h3 {
   display: flex;
   align-items: center;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border, #333);
+  border-bottom: 1px solid var(--border-color, #333);
   gap: 12px;
 }
 
@@ -415,7 +415,7 @@ h2, h3 {
 
 .record-card {
   background: var(--social-bg, #242424);
-  border: 1px solid var(--border, #333);
+  border: 1px solid var(--border-color, #333);
   border-radius: 10px;
   padding: 14px 16px;
 }

@@ -10,6 +10,7 @@ const authStore = useAuthStore();
   <nav class="navbar">
     <router-link to="/"><img class="logo" :src="oasLogo" alt="Orderly & Steady" /></router-link>
     <div class="nav-actions">
+      <router-link to="/why" class="nav-link">為什麼控糖？</router-link>
       <ThemeSwitcher />
       <router-link v-if="authStore.isLoggedIn" to="/member" class="user-icon" title="會員">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -27,8 +28,8 @@ const authStore = useAuthStore();
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  background: var(--bg, #1a1a1a);
-  border-bottom: 1px solid var(--border, #333);
+  background: var(--bg-color, #1a1a1a);
+  border-bottom: 1px solid var(--border-color, #333);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -46,10 +47,23 @@ const authStore = useAuthStore();
   gap: 12px;
 }
 
+.nav-link {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--font-color-h);
+  text-decoration: none;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: var(--accent);
+}
+
 .user-icon {
   display: flex;
   align-items: center;
-  color: var(--text-h);
+  color: var(--font-color-h);
   text-decoration: none;
   transition: opacity 0.2s;
 }

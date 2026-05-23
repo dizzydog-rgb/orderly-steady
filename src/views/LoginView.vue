@@ -79,7 +79,7 @@ async function handleSubmit() {
   width: 100%;
   max-width: 380px;
   background: var(--social-bg, #242424);
-  border: 1px solid var(--border, #333);
+  border: 1px solid var(--border-color, #333);
   border-radius: 16px;
   padding: 40px 32px;
 }
@@ -87,6 +87,7 @@ async function handleSubmit() {
 .title {
   margin: 0 0 4px;
   font-size: 1.8rem;
+  font-family: 'Sigmar', system-ui, sans-serif;
   color: #4ade80;
   text-align: center;
 }
@@ -102,7 +103,7 @@ async function handleSubmit() {
   display: flex;
   gap: 0;
   margin-bottom: 24px;
-  border-bottom: 1px solid var(--border, #333);
+  border-bottom: 1px solid var(--border-color, #333);
 }
 
 .tab {
@@ -142,8 +143,8 @@ async function handleSubmit() {
 
 .field input {
   padding: 10px 12px;
-  background: var(--bg, #1a1a1a);
-  border: 1px solid var(--border, #444);
+  background: var(--bg-color, #1a1a1a);
+  border: 1px solid var(--border-color, #444);
   border-radius: 8px;
   color: inherit;
   font-size: 0.95rem;

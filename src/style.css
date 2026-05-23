@@ -1,18 +1,35 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
+  --font-color: #6b6375;
+  --font-color-h: #08060d;
+  --bg-color: #fff;
+  --border-color: #e5e4e7;
+  --code-bg-color: #f4f3ec;
+  /* Primary — Teal */
+  --primary-1: #cdf2f0;
+  --primary-3: #66bab7;
+  --primary-5: #268380;
+
+  /* Secondary — Blue */
+  --secondary-1: #d3ddf4;
+  --secondary-3: #758ec5;
+  --secondary-5: #355291;
+
+  /* Functional — 評分色系 */
+  --score-high: #4ade80;
+  --score-medium: #facc15;
+  --score-low: #fb923c;
+  --score-critical: #f87171;
+  --color-danger: #f87171;
+
+  --accent: var(--primary-3);
+  --accent-bg: rgba(102, 186, 183, 0.12);
+  --accent-border: rgba(102, 186, 183, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: "Nunito", "Noto Sans TC", system-ui, sans-serif;
+  --font-main-title: "Nunito", "Noto Sans TC", system-ui, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
   --switcher-bg: #ebebeb;
@@ -21,11 +38,11 @@
   --switcher-inactive: #888888;
   --switcher-hover: #555555;
 
-  font: 18px/145% var(--sans);
+  font: 18px/145% var(--font-sans);
   letter-spacing: 0.18px;
   color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  color: var(--font-color);
+  background: var(--bg-color);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -37,21 +54,21 @@
 }
 
 html[data-theme="dark"] {
-  --text: #9ca3af;
-  --text-h: #f3f4f6;
-  --bg: #16171d;
-  --border: #2e303a;
-  --code-bg: #1f2028;
-  --accent: #c084fc;
-  --accent-bg: rgba(192, 132, 252, 0.15);
-  --accent-border: rgba(192, 132, 252, 0.5);
+  --font-color: #9ca3af;
+  --font-color-h: #f3f4f6;
+  --bg-color: #16171d;
+  --border-color: #2e303a;
+  --code-bg-color: #1f2028;
+  --accent: var(--primary-3);
+  --accent-bg: rgba(102, 186, 183, 0.18);
+  --accent-border: rgba(102, 186, 183, 0.5);
   --social-bg: rgba(47, 48, 58, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
 
   --switcher-bg: #2a2a2a;
   --switcher-indicator: #3d3d3d;
-  --switcher-active: var(--text-h);
+  --switcher-active: var(--font-color-h);
   --switcher-inactive: #666666;
   --switcher-hover: #aaaaaa;
 }
@@ -63,11 +80,11 @@ html[data-theme="dark"] #social .button-icon {
 /* JS 未執行時跟隨系統偏好 */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
+    --font-color: #9ca3af;
+    --font-color-h: #f3f4f6;
+    --bg-color: #16171d;
+    --border-color: #2e303a;
+    --code-bg-color: #1f2028;
     --accent: #c084fc;
     --accent-bg: rgba(192, 132, 252, 0.15);
     --accent-border: rgba(192, 132, 252, 0.5);
@@ -87,9 +104,9 @@ body {
 
 h1,
 h2 {
-  font-family: var(--heading);
+  font-family: var(--font-sans);
   font-weight: 500;
-  color: var(--text-h);
+  color: var(--font-color-h);
 }
 
 h1 {
@@ -119,14 +136,14 @@ code,
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
-  color: var(--text-h);
+  color: var(--font-color-h);
 }
 
 code {
   font-size: 15px;
   line-height: 135%;
   padding: 4px 8px;
-  background: var(--code-bg);
+  background: var(--code-bg-color);
 }
 
 .counter {
@@ -192,7 +209,7 @@ code {
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
+  border-inline: 1px solid var(--border-color);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -215,7 +232,7 @@ code {
 
 #next-steps {
   display: flex;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color);
   text-align: left;
 
   & > div {
@@ -239,11 +256,11 @@ code {
 }
 
 #docs {
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--border-color);
 
   @media (max-width: 1024px) {
     border-right: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border-color);
   }
 }
 
@@ -259,7 +276,7 @@ code {
   }
 
   a {
-    color: var(--text-h);
+    color: var(--font-color-h);
     font-size: 16px;
     border-radius: 6px;
     background: var(--social-bg);
@@ -298,7 +315,7 @@ code {
 
 #spacer {
   height: 88px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color);
   @media (max-width: 1024px) {
     height: 48px;
   }
@@ -310,7 +327,7 @@ code {
 
   &::before,
   &::after {
-    content: '';
+    content: "";
     position: absolute;
     top: -4.5px;
     border: 5px solid transparent;
@@ -318,10 +335,10 @@ code {
 
   &::before {
     left: 0;
-    border-left-color: var(--border);
+    border-left-color: var(--border-color);
   }
   &::after {
     right: 0;
-    border-right-color: var(--border);
+    border-right-color: var(--border-color);
   }
 }
