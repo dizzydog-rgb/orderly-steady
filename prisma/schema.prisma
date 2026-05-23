@@ -25,6 +25,7 @@ enum FoodType {
   PROTEIN
   COMPLEX_CARB
   SIMPLE_CARB
+  OTHER
 }
 
 model User {

@@ -3,6 +3,7 @@ export const FoodType = {
   PROTEIN: 'P',
   COMPLEX_CARB: 'CC',
   SIMPLE_CARB: 'SC',
+  OTHER: 'OT',
 } as const;
 
 export type FoodType = (typeof FoodType)[keyof typeof FoodType];
@@ -13,16 +14,19 @@ export interface IMealItem {
   label: string;
 }
 
-export interface ISlotBreakdown {
-  slot: 1 | 2 | 3;
-  input: FoodType | null;
-  slotMax: 50 | 30 | 20;
-  score: number;
+export interface IFoodBreakdown {
+  slot: number;
+  label: string | null;
+  type: string | null;
+  isOther: boolean;
 }
 
 export interface IScoringResult {
   totalScore: number;
-  breakdown: ISlotBreakdown[];
+  scorableCount: number;
+  inversions: number;
+  maxInversions: number;
+  breakdown: IFoodBreakdown[];
   tips: string[];
 }
 

@@ -2,79 +2,115 @@ import { describe, it, expect } from 'vitest';
 import { calculateMealScore } from '../scoringAlgorithm';
 import { FoodType } from '../../types';
 
-describe('calculateMealScore — 槽位配分制', () => {
+describe('calculateMealScore — 逆序對計分制', () => {
 
-  // --- 3 項 ---
+  // --- 完美順序（0 逆序對）---
 
-  it('3項 F→P→CC 應得 100 分且無 tips', () => {
+  it('FIBER→PROTEIN→COMPLEX_CARB 應得 100 分', () => {
     const result = calculateMealScore([FoodType.FIBER, FoodType.PROTEIN, FoodType.COMPLEX_CARB]);
     expect(result.totalScore).toBe(100);
-    expect(result.tips).toHaveLength(0);
+    expect(result.inversions).toBe(0);
+    expect(result.tips).toContain('進食順序完美！持續保持這樣的飲食習慣。');
   });
 
-  it('3項 F→P→SC 應得 85 分', () => {
+  it('FIBER→PROTEIN→SIMPLE_CARB 應得 100 分', () => {
     const result = calculateMealScore([FoodType.FIBER, FoodType.PROTEIN, FoodType.SIMPLE_CARB]);
-    // 50 + 30 + 5 = 85
-    expect(result.totalScore).toBe(85);
+    expect(result.totalScore).toBe(100);
+    expect(result.inversions).toBe(0);
   });
 
-  it('3項 SC→P→CC 應得 43 分且有 tips', () => {
-    const result = calculateMealScore([FoodType.SIMPLE_CARB, FoodType.PROTEIN, FoodType.COMPLEX_CARB]);
-    // 5 + 30 + 20 = 55... wait: SC in slot1=5, P in slot2=30, CC in slot3=20 → 55
-    expect(result.totalScore).toBe(55);
-    expect(result.tips.length).toBeGreaterThan(0);
+  // --- 完全逆序（最高逆序對）---
+
+  it('SIMPLE_CARB→PROTEIN→FIBER（完全逆序）應得 0 分', () => {
+    const result = calculateMealScore([FoodType.SIMPLE_CARB, FoodType.PROTEIN, FoodType.FIBER]);
+    expect(result.totalScore).toBe(0);
+    expect(result.inversions).toBe(3);
+    expect(result.maxInversions).toBe(3);
   });
 
-  // --- 2 項 ---
+  // --- 部分逆序 ---
 
-  it('2項 F→P 應得 80 分', () => {
+  it('PROTEIN→FIBER→SIMPLE_CARB（1 逆序對 / max 3）應得 67 分', () => {
+    const result = calculateMealScore([FoodType.PROTEIN, FoodType.FIBER, FoodType.SIMPLE_CARB]);
+    expect(result.inversions).toBe(1);
+    expect(result.maxInversions).toBe(3);
+    expect(result.totalScore).toBe(67);
+  });
+
+  it('2 項 PROTEIN→FIBER（1 逆序對 / max 1）應得 0 分', () => {
+    const result = calculateMealScore([FoodType.PROTEIN, FoodType.FIBER]);
+    expect(result.inversions).toBe(1);
+    expect(result.maxInversions).toBe(1);
+    expect(result.totalScore).toBe(0);
+  });
+
+  it('2 項 FIBER→PROTEIN（0 逆序對）應得 100 分', () => {
     const result = calculateMealScore([FoodType.FIBER, FoodType.PROTEIN]);
-    // 50 + 30 + 0 = 80
-    expect(result.totalScore).toBe(80);
+    expect(result.totalScore).toBe(100);
+    expect(result.inversions).toBe(0);
   });
 
-  it('2項 F→CC 應得 68 分', () => {
-    const result = calculateMealScore([FoodType.FIBER, FoodType.COMPLEX_CARB]);
-    // 50 + 18 + 0 = 68
-    expect(result.totalScore).toBe(68);
-    expect(result.tips).toContain('纖維之後搭配蛋白質，控糖效果更佳。');
+  // --- OTHER 排除 ---
+
+  it('FIBER→OTHER→SIMPLE_CARB（OTHER 排除，0 逆序對）應得 100 分', () => {
+    const result = calculateMealScore([FoodType.FIBER, FoodType.OTHER, FoodType.SIMPLE_CARB]);
+    expect(result.scorableCount).toBe(2);
+    expect(result.inversions).toBe(0);
+    expect(result.totalScore).toBe(100);
+    expect(result.breakdown[1].isOther).toBe(true);
   });
 
-  it('2項 CC→P 應得 45 分且有 tips', () => {
-    const result = calculateMealScore([FoodType.COMPLEX_CARB, FoodType.PROTEIN]);
-    // 15 + 30 + 0 = 45
-    expect(result.totalScore).toBe(45);
-    expect(result.tips).toContain('將「膳食纖維」放在第一口，能有效減緩餐後血糖上升。');
+  it('OTHER→PROTEIN→FIBER（OTHER 排除，1 逆序對 / max 1）應得 0 分', () => {
+    const result = calculateMealScore([FoodType.OTHER, FoodType.PROTEIN, FoodType.FIBER]);
+    expect(result.scorableCount).toBe(2);
+    expect(result.inversions).toBe(1);
+    expect(result.totalScore).toBe(0);
   });
 
-  // --- 1 項 ---
+  // --- 邊界：scorable ≤ 1 → 100 分 ---
 
-  it('1項 F 應得 50 分', () => {
+  it('全 OTHER（scorable=0）應得 100 分', () => {
+    const result = calculateMealScore([FoodType.OTHER, FoodType.OTHER, FoodType.OTHER]);
+    expect(result.totalScore).toBe(100);
+    expect(result.scorableCount).toBe(0);
+  });
+
+  it('1 項 FIBER（scorable=1）應得 100 分', () => {
     const result = calculateMealScore([FoodType.FIBER]);
-    expect(result.totalScore).toBe(50);
-    expect(result.tips).toHaveLength(0);
+    expect(result.totalScore).toBe(100);
+    expect(result.scorableCount).toBe(1);
   });
 
-  it('1項 P 應得 30 分且有 tips', () => {
-    const result = calculateMealScore([FoodType.PROTEIN]);
-    // 30 + 0 + 0 = 30
-    expect(result.totalScore).toBe(30);
-    expect(result.tips).toContain('將「膳食纖維」放在第一口，能有效減緩餐後血糖上升。');
-  });
-
-  it('1項 SC 應得 5 分且有精緻糖警告', () => {
+  it('1 項 SIMPLE_CARB 有精緻糖 tip', () => {
     const result = calculateMealScore([FoodType.SIMPLE_CARB]);
-    expect(result.totalScore).toBe(5);
+    expect(result.totalScore).toBe(100);
     expect(result.tips).toContain('空腹攝取精緻糖會導致血糖劇烈波動，建議放在餐後。');
   });
 
-  // --- breakdown 結構驗證 ---
+  // --- breakdown 結構 ---
 
-  it('breakdown 應有三個槽位，未填槽位 input 為 null、score 為 0', () => {
-    const result = calculateMealScore([FoodType.FIBER]);
+  it('breakdown 長度等於輸入食物數量，isOther 正確', () => {
+    const result = calculateMealScore([FoodType.FIBER, FoodType.OTHER, FoodType.SIMPLE_CARB]);
     expect(result.breakdown).toHaveLength(3);
-    expect(result.breakdown[0]).toMatchObject({ slot: 1, input: FoodType.FIBER, slotMax: 50, score: 50 });
-    expect(result.breakdown[1]).toMatchObject({ slot: 2, input: null, slotMax: 30, score: 0 });
-    expect(result.breakdown[2]).toMatchObject({ slot: 3, input: null, slotMax: 20, score: 0 });
+    expect(result.breakdown[0]).toMatchObject({ slot: 1, isOther: false, type: FoodType.FIBER });
+    expect(result.breakdown[1]).toMatchObject({ slot: 2, isOther: true,  type: FoodType.OTHER });
+    expect(result.breakdown[2]).toMatchObject({ slot: 3, isOther: false, type: FoodType.SIMPLE_CARB });
+  });
+
+  // --- Tips ---
+
+  it('FIBER 開頭且 scorable >= 2 不觸發纖維 tip', () => {
+    const result = calculateMealScore([FoodType.FIBER, FoodType.SIMPLE_CARB]);
+    expect(result.tips).not.toContain('將「膳食纖維」放在第一口，能有效減緩餐後血糖上升。');
+  });
+
+  it('非 FIBER 開頭觸發纖維 tip', () => {
+    const result = calculateMealScore([FoodType.PROTEIN, FoodType.FIBER]);
+    expect(result.tips).toContain('將「膳食纖維」放在第一口，能有效減緩餐後血糖上升。');
+  });
+
+  it('FIBER→COMPLEX_CARB 觸發「搭配蛋白質」tip', () => {
+    const result = calculateMealScore([FoodType.FIBER, FoodType.COMPLEX_CARB]);
+    expect(result.tips).toContain('纖維之後搭配蛋白質，控糖效果更佳。');
   });
 });

@@ -19,7 +19,14 @@ const slot3Enabled = computed(() => slot2Enabled.value && slot2.value.trim().len
 watch(slot1, (val) => { if (!val.trim()) { slot2.value = ''; slot3.value = ''; } });
 watch(slot2, (val) => { if (!val.trim()) slot3.value = ''; });
 
-const scoreResult = ref<{ totalScore: number; breakdown: { slot: number; input: string | null; slotMax: number; score: number }[]; tips: string[] } | null>(null);
+const scoreResult = ref<{
+  totalScore: number;
+  scorableCount: number;
+  inversions: number;
+  maxInversions: number;
+  breakdown: { slot: number; label: string | null; type: string | null; isOther: boolean }[];
+  tips: string[];
+} | null>(null);
 const displayScore = ref(0);
 const isSubmitting = ref(false);
 const submitError = ref('');
@@ -106,6 +113,17 @@ async function handleSubmit() {
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
+
+const SLOT_CHARS: Record<number, string> = { 1: '一', 2: '二', 3: '三' };
+function numToChinese(n: number): string { return SLOT_CHARS[n] ?? String(n); }
+
+const FOOD_TYPE_LABELS: Record<string, string> = {
+  FIBER: '膳食纖維', PROTEIN: '蛋白質', COMPLEX_CARB: '複合碳水',
+  SIMPLE_CARB: '精緻糖', OTHER: '其他',
+};
+function foodTypeLabel(type: string | null): string {
+  return type ? (FOOD_TYPE_LABELS[type] ?? type) : '—';
+}
 </script>
 
 <template>
@@ -144,11 +162,10 @@ function formatDate(iso: string): string {
 
       <div class="breakdown" v-if="scoreResult.breakdown.length > 0">
         <div v-for="b in scoreResult.breakdown" :key="b.slot" class="breakdown-row">
-          <span class="slot-label">第{{ ({ 1: '一', 2: '二', 3: '三' } as Record<number,string>)[b.slot] }}口</span>
-          <span class="slot-input">{{ b.input ? b.input : '（空）' }}</span>
-          <span class="slot-score" :style="{ color: scoreColor(b.score / b.slotMax * 100) }">
-            {{ b.score }} / {{ b.slotMax }}
-          </span>
+          <span class="slot-label">第{{ numToChinese(b.slot) }}口</span>
+          <span class="slot-food">{{ b.label ?? '（空）' }}</span>
+          <span class="slot-type">{{ foodTypeLabel(b.type) }}</span>
+          <span v-if="b.isOther" class="tag-other">不計分</span>
         </div>
       </div>
 
@@ -322,8 +339,16 @@ h2, h3 {
 .breakdown-row:last-child { border-bottom: none; }
 
 .slot-label { font-size: 0.8rem; color: #888; width: 48px; flex-shrink: 0; }
-.slot-input { flex: 1; font-size: 0.9rem; }
-.slot-score { font-size: 0.9rem; font-weight: 600; }
+.slot-food { flex: 1; font-size: 0.9rem; }
+.slot-type { font-size: 0.8rem; color: #888; }
+.tag-other {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  background: rgba(156, 163, 175, 0.15);
+  color: #9ca3af;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 
 .tips {
   background: rgba(250, 204, 21, 0.08);

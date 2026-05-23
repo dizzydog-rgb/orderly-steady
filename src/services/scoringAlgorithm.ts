@@ -1,55 +1,72 @@
 import { FoodType } from '../types';
-import type { ISlotBreakdown, IScoringResult } from '../types';
+import type { IFoodBreakdown, IScoringResult } from '../types';
 
-const SLOT_MAX = [50, 30, 20] as const;
-
-const SCORE_MATRIX: Record<FoodType, readonly [number, number, number]> = {
-  [FoodType.FIBER]:        [50, 10,  5],
-  [FoodType.PROTEIN]:      [30, 30,  8],
-  [FoodType.COMPLEX_CARB]: [15, 18, 20],
-  [FoodType.SIMPLE_CARB]:  [ 5,  5,  5],
+// 理想進食優先級：數字越小越優先
+const PRIORITY: Partial<Record<string, number>> = {
+  [FoodType.FIBER]: 0,
+  [FoodType.PROTEIN]: 1,
+  [FoodType.COMPLEX_CARB]: 2,
+  [FoodType.SIMPLE_CARB]: 3,
 };
 
-type MealSequence = [FoodType] | [FoodType, FoodType] | [FoodType, FoodType, FoodType];
-
-export function calculateMealScore(sequence: MealSequence): IScoringResult {
-  let totalScore = 0;
-  const breakdown: ISlotBreakdown[] = [];
+function buildTips(scorable: string[], inversions: number): string[] {
   const tips: string[] = [];
+  if (scorable.length === 0) return tips;
 
-  for (let i = 0; i < 3; i++) {
-    const slotIndex = i as 0 | 1 | 2;
-    const input = sequence[slotIndex] ?? null;
-    const slotMax = SLOT_MAX[slotIndex];
-    const score = input !== null ? SCORE_MATRIX[input][slotIndex] : 0;
-
-    totalScore += score;
-    breakdown.push({
-      slot: (i + 1) as 1 | 2 | 3,
-      input,
-      slotMax,
-      score,
-    });
-  }
-
-  // Tips
-  const [slot1, slot2, slot3] = sequence;
-
-  if (slot1 !== FoodType.FIBER) {
+  if (scorable[0] !== FoodType.FIBER) {
     tips.push('將「膳食纖維」放在第一口，能有效減緩餐後血糖上升。');
   }
-  if (slot1 === FoodType.SIMPLE_CARB) {
+  if (scorable[0] === FoodType.SIMPLE_CARB) {
     tips.push('空腹攝取精緻糖會導致血糖劇烈波動，建議放在餐後。');
   }
-  if (sequence.length >= 2 && slot2 !== FoodType.PROTEIN && slot1 === FoodType.FIBER) {
+  if (scorable.length >= 2 && scorable[0] === FoodType.FIBER && scorable[1] !== FoodType.PROTEIN) {
     tips.push('纖維之後搭配蛋白質，控糖效果更佳。');
   }
-  if (sequence.length >= 2 && (slot2 === FoodType.SIMPLE_CARB || slot2 === FoodType.COMPLEX_CARB) && slot1 !== FoodType.FIBER) {
-    tips.push('在攝取碳水化合物之前，先吃點蔬菜建立緩衝吧！');
-  }
-  if (sequence.length === 3 && slot3 === FoodType.SIMPLE_CARB) {
-    tips.push('以複合碳水取代精緻糖作為收尾，血糖曲線會更平穩。');
+  if (inversions === 0 && scorable.length >= 2) {
+    tips.push('進食順序完美！持續保持這樣的飲食習慣。');
   }
 
-  return { totalScore, breakdown, tips };
+  return tips;
+}
+
+export function calculateMealScore(sequence: string[]): IScoringResult {
+  const scorable = sequence.filter(t => PRIORITY[t] !== undefined);
+  const n = scorable.length;
+
+  const breakdown: IFoodBreakdown[] = sequence.map((type, i) => ({
+    slot: i + 1,
+    label: null,
+    type,
+    isOther: PRIORITY[type] === undefined,
+  }));
+
+  if (n <= 1) {
+    return {
+      totalScore: 100,
+      scorableCount: n,
+      inversions: 0,
+      maxInversions: 0,
+      breakdown,
+      tips: buildTips(scorable, 0),
+    };
+  }
+
+  let inversions = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (PRIORITY[scorable[i]]! > PRIORITY[scorable[j]]!) inversions++;
+    }
+  }
+
+  const maxInversions = n * (n - 1) / 2;
+  const totalScore = Math.round((1 - inversions / maxInversions) * 100);
+
+  return {
+    totalScore,
+    scorableCount: n,
+    inversions,
+    maxInversions,
+    breakdown,
+    tips: buildTips(scorable, inversions),
+  };
 }
