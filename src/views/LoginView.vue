@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuth } from '../composables/useAuth';
+import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
-const { login, register } = useAuth();
+const { login, register } = useAuthStore();
 
 const tab = ref<'login' | 'register'>('login');
 const email = ref('');

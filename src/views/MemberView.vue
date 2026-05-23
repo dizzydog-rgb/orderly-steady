@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { useAuth } from '../composables/useAuth';
+import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
-const { user, logout } = useAuth();
+const authStore = useAuthStore();
 
 async function handleLogout() {
-  await logout();
+  await authStore.logout();
   router.push('/login');
 }
 </script>
@@ -17,11 +17,11 @@ async function handleLogout() {
       <h2>個人資料</h2>
       <div class="info-row">
         <span class="label">Email</span>
-        <span class="value">{{ user?.email }}</span>
+        <span class="value">{{ authStore.user?.email }}</span>
       </div>
       <div class="info-row">
         <span class="label">名稱</span>
-        <span class="value">{{ user?.name ?? '（未設定）' }}</span>
+        <span class="value">{{ authStore.user?.name ?? '（未設定）' }}</span>
       </div>
 
       <div class="actions">

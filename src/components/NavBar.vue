@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { useAuth } from '../composables/useAuth';
+import { useAuthStore } from '../stores/auth';
 
-const { isLoggedIn } = useAuth();
+const authStore = useAuthStore();
 </script>
 
 <template>
   <nav class="navbar">
     <span class="logo">Orderly & Steady</span>
-    <router-link v-if="isLoggedIn" to="/member" class="user-icon" title="會員">👤</router-link>
+    <router-link v-if="authStore.isLoggedIn" to="/member" class="user-icon" title="會員">👤</router-link>
   </nav>
 </template>
 

@@ -11,6 +11,14 @@ import { authMiddleware } from "../middleware/authMiddleware";
 
 const router = Router();
 
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.COOKIE_SECURE === "true",
+  sameSite: "strict" as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: "/api/auth",
+};
+
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
   const { email, password, name } = req.body;
@@ -59,16 +67,16 @@ router.post("/login", async (req, res) => {
     data: { refreshToken },
   });
 
+  res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
   return res.json({
     accessToken,
-    refreshToken,
     user: { id: user.id, email: user.email, name: user.name },
   });
 });
 
 // POST /api/auth/refresh
 router.post("/refresh", async (req, res) => {
-  const { refreshToken } = req.body;
+  const refreshToken = req.cookies.refreshToken;
 
   if (!refreshToken) {
     return res.status(400).json({ error: "refreshToken 為必填" });
@@ -90,10 +98,21 @@ router.post("/refresh", async (req, res) => {
       data: { refreshToken: newRefreshToken },
     });
 
-    return res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+    res.cookie("refreshToken", newRefreshToken, REFRESH_COOKIE_OPTIONS);
+    return res.json({ accessToken: newAccessToken });
   } catch {
     return res.status(401).json({ error: "無效或已過期的 Refresh Token" });
   }
+});
+
+// POST /api/auth/logout
+router.post("/logout", authMiddleware, async (req, res) => {
+  await prisma.user.update({
+    where: { id: req.user!.userId },
+    data: { refreshToken: null },
+  });
+  res.clearCookie("refreshToken", { path: "/api/auth" });
+  return res.json({ message: "已登出" });
 });
 
 // GET /api/auth/me

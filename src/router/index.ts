@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { isLoggedIn, refreshAccessToken } from '../composables/useAuth';
+import { useAuthStore } from '../stores/auth';
 import LoginView from '../views/LoginView.vue';
 import HomeView from '../views/HomeView.vue';
 import MemberView from '../views/MemberView.vue';
@@ -16,13 +16,15 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
+  const authStore = useAuthStore();
+
   if (to.meta.public) {
-    if (isLoggedIn.value) return '/';
+    if (authStore.isLoggedIn) return '/';
     return true;
   }
 
-  if (!isLoggedIn.value) {
-    const ok = await refreshAccessToken();
+  if (!authStore.isLoggedIn) {
+    const ok = await authStore.refreshAccessToken();
     if (!ok) return '/login';
   }
 

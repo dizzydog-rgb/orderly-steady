@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import gsap from 'gsap';
-import { useAuth } from '../composables/useAuth';
+import { useAuthStore } from '../stores/auth';
 import { useHistory } from '../composables/useHistory';
 import { fetchWithAuth } from '../utils/fetchWithAuth';
 import type { IMealRecord } from '../types';
 
-const { user } = useAuth();
+const authStore = useAuthStore();
 const { records, isLoading, fetchHistory, prependRecord } = useHistory();
 
 const slot1 = ref('');
@@ -75,7 +75,7 @@ async function handleSubmit() {
     const res = await fetchWithAuth('/api/meals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: user.value?.email, foods }),
+      body: JSON.stringify({ email: authStore.user?.email, foods }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
