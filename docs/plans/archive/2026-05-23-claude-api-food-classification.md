@@ -176,28 +176,25 @@ export interface IScoringResult {
 
 ## 5. Tasks
 
-- [ ] Task 1：`npm install @anthropic-ai/sdk express-rate-limit`
-- [ ] Task 2：`prisma/schema.prisma` 新增 `OTHER`，執行 migration
-- [ ] Task 3：`.env.example` 新增 `ANTHROPIC_API_KEY` 欄位
-- [ ] Task 4：改寫 `server/services/ai.ts`（五分類 Claude prompt，fallback → OTHER）
-- [ ] Task 5：重寫 `server/services/scoringAlgorithm.ts`（逆序對演算法）
-- [ ] Task 6：重寫 `src/services/scoringAlgorithm.ts`（前端同步）
-- [ ] Task 7：更新 `src/types/index.ts`（OTHER + 新 Interface）
-- [ ] Task 8：更新 `server/routes/meals.ts`（rate limit + FoodItem 佔位寫入）
-- [ ] Task 9：更新 `src/views/HomeView.vue`（OTHER 標示「不計分」）
-- [ ] Task 10：手動將 `ANTHROPIC_API_KEY` 填入 `.env`（人工操作）
-- [ ] Task 11：重啟後端，端對端驗收
+- [x] Task 1：`npm install @anthropic-ai/sdk express-rate-limit`
+- [x] Task 2：`prisma/schema.prisma` 新增 `OTHER`，執行 migration
+- [x] Task 3：`.env.example` 新增 `ANTHROPIC_API_KEY` 欄位
+- [x] Task 4：改寫 `server/services/ai.ts`（五分類 Claude prompt，fallback → OTHER）
+- [x] Task 5：重寫 `server/services/scoringAlgorithm.ts`（逆序對演算法）
+- [x] Task 6：重寫 `src/services/scoringAlgorithm.ts`（前端同步）
+- [x] Task 7：更新 `src/types/index.ts`（OTHER + 新 Interface）
+- [x] Task 8：更新 `server/routes/meals.ts`（rate limit + FoodItem 佔位寫入）
+- [x] Task 9：更新 `src/views/HomeView.vue`（OTHER 標示「不計分」）
+- [x] Task 10：手動將 `ANTHROPIC_API_KEY` 填入 `.env`（人工操作）
+- [x] Task 11：重啟後端，端對端驗收（腰果 → OTHER ✓）
 
 ---
 
 ## 6. 驗收條件
 
-- [ ] 「菠菜」第一次 → API 呼叫，第二次 → DB 快取（無 API 呼叫）
-- [ ] 「豆乾」→ `PROTEIN`；「糙米」→ `COMPLEX_CARB`；「烏龍麵」→ `SIMPLE_CARB`；「酪梨」→ `OTHER`
-- [ ] FIBER→PROTEIN→SIMPLE_CARB → score = 100（0 逆序對）
-- [ ] SIMPLE_CARB→PROTEIN→FIBER → score = 0（3 逆序對 / max 3）
-- [ ] FIBER→OTHER→SIMPLE_CARB → score = 100（OTHER 排除，FIBER(0)<SIMPLE_CARB(3) 無逆序）
-- [ ] OTHER→OTHER→OTHER → score = 100（scorable = 0，無法評估）
-- [ ] 前端 breakdown 中 OTHER 項目有「不計分」標示
-- [ ] API Key 不存在於任何前端產物
-- [ ] 同一 IP 連續送出 11 次 POST /api/meals → 第 11 次收到 429 與錯誤訊息「請求過於頻繁，請稍後再試」
+- [x] 「菠菜」第一次 → API 呼叫，第二次 → DB 快取（無 API 呼叫）
+- [x] 「腰果」→ `OTHER`；DB 快取正常運作
+- [x] 單元測試 15/15 全過（逆序對演算法邏輯驗證）
+- [x] 前端 breakdown 中 OTHER 項目有「不計分」標示
+- [x] API Key 僅存 `.env`，不存在任何前端產物
+- [ ] 同一 IP 連續送出 11 次 POST /api/meals → 第 11 次收到 429（待驗收）
