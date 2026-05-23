@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 專案概述
 
-GlucoseFlow — 結合 AI 分類邏輯的控糖管理系統，使用者紀錄進食順序，系統計算血糖穩定得分並視覺化呈現趨勢。
+Orderly & Steady — 結合 AI 分類邏輯的控糖管理系統，使用者紀錄進食順序，系統計算血糖穩定得分並視覺化呈現趨勢。
 
 - **前端**: Vue 3 (Composition API), Vite, TypeScript, Pinia, GSAP, Chart.js
 - **後端**: Node.js (Express 5), Prisma (MySQL), Docker

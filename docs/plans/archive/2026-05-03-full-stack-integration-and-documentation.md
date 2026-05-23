@@ -1,7 +1,7 @@
-# 2026-05-03 GlucoseFlow 全端架構建立與文件同步更新
+# 2026-05-03 Orderly & Steady 全端架構建立與文件同步更新
 
 ## 1. User Story
-身為專案開發者，我需要將 GlucoseFlow 專案從純前端應用升級為具備全端架構（Node.js, Express, Prisma, Docker）的系統，導入 GSAP 動態動畫及智慧健康建議 (Tips) 邏輯，並同步更新所有技術說明文件。
+身為專案開發者，我需要將 Orderly & Steady 專案從純前端應用升級為具備全端架構（Node.js, Express, Prisma, Docker）的系統，導入 GSAP 動態動畫及智慧健康建議 (Tips) 邏輯，並同步更新所有技術說明文件。
 
 **核心變更**：
 1. **後端與資料庫初始化**：建立 Node.js (Express) 後端與 MySQL (Prisma) 資料庫環境，並引入 Docker 容器化管理。

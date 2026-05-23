@@ -1,6 +1,6 @@
 # Features List
 
-本文件記錄「控糖網站」的功能清單、行為描述與目前開發狀態。
+本文件記錄「Orderly & Steady」的功能清單、行為描述與目前開發狀態。
 
 ## 1. 核心功能：進食順序評分 (Meal Order Scoring)
 
