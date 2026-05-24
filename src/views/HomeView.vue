@@ -164,8 +164,10 @@ function foodTypeLabel(type: string | null): string {
         <div v-for="b in scoreResult.breakdown" :key="b.slot" class="breakdown-row">
           <span class="slot-label">第{{ numToChinese(b.slot) }}口</span>
           <span class="slot-food">{{ b.label ?? '（空）' }}</span>
-          <span class="slot-type">{{ foodTypeLabel(b.type) }}</span>
-          <span v-if="b.isOther" class="tag-other">不計分</span>
+          <span class="slot-right">
+            <span v-if="b.isOther" class="tag-other">不計分</span>
+            <span class="slot-type">{{ foodTypeLabel(b.type) }}</span>
+          </span>
         </div>
       </div>
 
@@ -311,6 +313,7 @@ h2, h3 { margin: 0 0 16px; }
 
 .slot-label { font-size: var(--f14); color: var(--font-color); width: 48px; flex-shrink: 0; }
 .slot-food { flex: 1; font-size: var(--f16); }
+.slot-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-shrink: 0; width: 96px; }
 .slot-type { font-size: var(--f14); color: var(--font-color); }
 
 .tag-other {
