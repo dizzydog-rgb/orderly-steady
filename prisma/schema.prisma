@@ -67,11 +67,7 @@ model FoodItem {
   type          FoodType   // 食物類別
   label         String     // 食物名稱
   sequenceIndex Int        // 進食順序
-  
-  baseScore     Int        // 基礎分數
-  modifier      Float      // 權重係數
-  finalScore    Int        // 計算後的該項得分
-  
+
   createdAt     DateTime   @default(now())
 
   @@index([mealRecordId]) // 幫助快速拉取某筆紀錄的所有食物品項

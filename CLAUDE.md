@@ -37,14 +37,20 @@ npx vitest run src/services/__tests__/scoringAlgorithm.spec.ts  # 執行單一�
 - `src/services/scoringAlgorithm.ts` — 前端即時計算（使用者操作時）
 - `server/services/scoringAlgorithm.ts` — 後端儲存前最終計算
 
-| 類別     | 代碼 | 基礎分 | 備註     |
-| -------- | ---- | ------ | -------- |
-| 膳食纖維 | `F`  | 40     | 最佳首位 |
-| 蛋白質   | `P`  | 30     |          |
-| 複合碳水 | `CC` | 20     |          |
-| 精緻糖   | `SC` | 10     |          |
+**all_pair 加權矩陣演算法**（三分支決策樹）：
 
-modifier 規則：碳水出現在纖維之前 → ×0.5（扣分）；前兩位含纖維且碳水在第三位以後 → ×1.2（加成）。
+- **m=0**（全為 OTHER）：`totalScore: null`，不寫入 DB
+- **m=1**（單一可評分食物）：SIMPLE_CARB → 20 分；其餘 → 60 分；tips 硬編碼均衡建議
+- **m≥2**：雙重迴圈所有 pair (i,j)，依距離加權（相鄰 ×1.5，跨越 ×1.0），查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB 首位懲罰 -30，index=1 懲罰 -10
+
+SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodType value `'F'`/`'P'`/`'CC'`/`'SC'`）：
+
+| 前 \ 後 | F | P | CC | SC |
+|---------|---|---|----|----|
+| **F**   | 5 | 10| 8  | 8  |
+| **P**   | 8 | 5 | 7  | 9  |
+| **CC**  | 5 | 5 | 5  | 3  |
+| **SC**  | 1 | 1 | 1  | 0  |
 
 ### AI 分類與快取
 
@@ -53,7 +59,7 @@ modifier 規則：碳水出現在纖維之前 → ×0.5（扣分）；前兩位�
 
 ### 資料模型（Prisma）
 
-`User` → `MealRecord`（含 totalScore、tips JSON）→ `FoodItem`（含 sequenceIndex、modifier）。
+`User` → `MealRecord`（含 totalScore、tips JSON）→ `FoodItem`（含 sequenceIndex）。
 `MealRecord` 有 `(userId, recordedAt)` 複合索引，`FoodItem` 有 `mealRecordId` 索引。
 
 ## 關鍵規則

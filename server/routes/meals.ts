@@ -40,7 +40,7 @@ router.post("/", mealsRateLimit, async (req, res) => {
       })
     );
 
-    // 3. 計算得分（逆序對計分）
+    // 3. 計算得分
     const typesSequence = foodItemsData.map((item) => item.type);
     const scoreResult: IScoringResult = calculateMealScore(typesSequence);
 
@@ -50,7 +50,11 @@ router.post("/", mealsRateLimit, async (req, res) => {
       label: foods[i] ?? null,
     }));
 
-    // 5. 寫入資料庫（FoodItem 逐項分數已無意義，填入佔位 0）
+    // 5. m=0 時跳過 DB 寫入
+    if (scoreResult.totalScore === null) {
+      return res.status(200).json({ analysis: scoreResult });
+    }
+
     const record = await prisma.mealRecord.create({
       data: {
         userId: user.id,
@@ -61,9 +65,6 @@ router.post("/", mealsRateLimit, async (req, res) => {
             type: item.type,
             label: item.label,
             sequenceIndex: item.sequenceIndex,
-            baseScore: 0,
-            modifier: 1.0,
-            finalScore: 0,
           })),
         },
       },

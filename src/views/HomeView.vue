@@ -4,7 +4,7 @@ import gsap from 'gsap';
 import { useAuthStore } from '../stores/auth';
 import { useHistory } from '../composables/useHistory';
 import { fetchWithAuth } from '../utils/fetchWithAuth';
-import type { IMealRecord } from '../types';
+import type { IMealRecord, IScoringResult } from '../types';
 
 const authStore = useAuthStore();
 const { records, isLoading, error, fetchHistory, prependRecord } = useHistory();
@@ -19,14 +19,7 @@ const slot3Enabled = computed(() => slot2Enabled.value && slot2.value.trim().len
 watch(slot1, (val) => { if (!val.trim()) { slot2.value = ''; slot3.value = ''; } });
 watch(slot2, (val) => { if (!val.trim()) slot3.value = ''; });
 
-const scoreResult = ref<{
-  totalScore: number;
-  scorableCount: number;
-  inversions: number;
-  maxInversions: number;
-  breakdown: { slot: number; label: string | null; type: string | null; isOther: boolean }[];
-  tips: string[];
-} | null>(null);
+const scoreResult = ref<IScoringResult | null>(null);
 const displayScore = ref(0);
 const isSubmitting = ref(false);
 const submitError = ref('');
@@ -39,14 +32,16 @@ onMounted(() => {
 
 onUnmounted(() => ctx?.revert());
 
-function scoreColor(score: number): string {
+function scoreColor(score: number | null): string {
+  if (score === null) return 'var(--font-color)';
   if (score >= 80) return 'var(--score-high)';
   if (score >= 60) return 'var(--score-medium)';
   if (score >= 40) return 'var(--score-low)';
   return 'var(--score-critical)';
 }
 
-function animateScore(newScore: number) {
+function animateScore(newScore: number | null) {
+  if (newScore === null) return;
   ctx.add(() => {
     gsap.to(displayScore, {
       duration: 0.6,
@@ -93,14 +88,16 @@ async function handleSubmit() {
     scoreResult.value = data.analysis;
     animateScore(data.analysis.totalScore);
 
-    const newRecord: IMealRecord = {
-      id: data.record?.id ?? String(Date.now()),
-      totalScore: data.analysis.totalScore,
-      tips: data.analysis.tips,
-      recordedAt: new Date().toISOString(),
-      foodItems: data.record?.foodItems ?? [],
-    };
-    prependRecord(newRecord);
+    if (data.analysis.totalScore !== null) {
+      const newRecord: IMealRecord = {
+        id: data.record?.id ?? String(Date.now()),
+        totalScore: data.analysis.totalScore,
+        tips: data.analysis.tips,
+        recordedAt: new Date().toISOString(),
+        foodItems: data.record?.foodItems ?? [],
+      };
+      prependRecord(newRecord);
+    }
 
     slot1.value = '';
     slot2.value = '';
@@ -157,7 +154,7 @@ function foodTypeLabel(type: string | null): string {
     <section v-if="scoreResult" class="result-section">
       <div class="score-card" :style="{ borderColor: scoreColor(scoreResult.totalScore) }">
         <div class="score-label">本餐評分</div>
-        <div class="score-value" :style="{ color: scoreColor(scoreResult.totalScore) }">{{ displayScore }}</div>
+        <div class="score-value" :style="{ color: scoreColor(scoreResult.totalScore) }">{{ scoreResult.totalScore === null ? '—' : displayScore }}</div>
       </div>
 
       <div class="breakdown" v-if="scoreResult.breakdown.length > 0">

@@ -22,10 +22,8 @@ export interface IFoodBreakdown {
 }
 
 export interface IScoringResult {
-  totalScore: number;
+  totalScore: number | null;
   scorableCount: number;
-  inversions: number;
-  maxInversions: number;
   breakdown: IFoodBreakdown[];
   tips: string[];
 }
