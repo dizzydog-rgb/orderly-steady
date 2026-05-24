@@ -40,10 +40,10 @@ onMounted(() => {
 onUnmounted(() => ctx?.revert());
 
 function scoreColor(score: number): string {
-  if (score >= 80) return '#4ade80';
-  if (score >= 60) return '#facc15';
-  if (score >= 40) return '#fb923c';
-  return '#f87171';
+  if (score >= 80) return 'var(--score-high)';
+  if (score >= 60) return 'var(--score-medium)';
+  if (score >= 40) return 'var(--score-low)';
+  return 'var(--score-critical)';
 }
 
 function animateScore(newScore: number) {
@@ -221,32 +221,17 @@ function foodTypeLabel(type: string | null): string {
   gap: 32px;
 }
 
-h2, h3 {
-  margin: 0 0 16px;
-}
+h2, h3 { margin: 0 0 16px; }
 
-/* 輸入區 */
-.input-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+.input-section { display: flex; flex-direction: column; gap: 16px; }
 
-.slots {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+.slots { display: flex; flex-direction: column; gap: 12px; }
 
-.slot {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+.slot { display: flex; flex-direction: column; gap: 6px; }
 
 .slot label {
-  font-size: 0.85rem;
-  color: #aaa;
+  font-size: var(--f14);
+  color: var(--font-color);
 }
 
 .slot input {
@@ -255,37 +240,28 @@ h2, h3 {
   border: 1px solid var(--border-color, #444);
   border-radius: 8px;
   color: inherit;
-  font-size: 0.95rem;
+  font-size: var(--f16);
   outline: none;
   transition: border-color 0.2s;
 }
 
-.slot input:focus {
-  border-color: #4ade80;
-}
-
-.slot.locked input {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.slot.locked label {
-  opacity: 0.5;
-}
+.slot input:focus { border-color: var(--accent); }
+.slot.locked input { opacity: 0.4; cursor: not-allowed; }
+.slot.locked label { opacity: 0.5; }
 
 .error {
-  color: #f87171;
-  font-size: 0.85rem;
+  color: var(--color-danger);
+  font-size: var(--f14);
   margin: 0;
 }
 
 .submit-btn {
   padding: 12px;
-  background: #4ade80;
-  color: #0a0a0a;
+  background: var(--accent);
+  color: var(--font-color-h);
   border: none;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: var(--f18);
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s;
@@ -294,15 +270,10 @@ h2, h3 {
 .submit-btn:hover:not(:disabled) { opacity: 0.85; }
 .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* 評分結果 */
-.result-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+.result-section { display: flex; flex-direction: column; gap: 16px; }
 
 .score-card {
-  border: 3px solid #4ade80;
+  border: 3px solid var(--score-high);
   padding: 20px 28px;
   border-radius: 14px;
   background: var(--social-bg, #242424);
@@ -311,8 +282,8 @@ h2, h3 {
 }
 
 .score-label {
-  font-size: 0.9rem;
-  color: #888;
+  font-size: var(--f16);
+  color: var(--font-color);
   margin-bottom: 4px;
 }
 
@@ -338,11 +309,12 @@ h2, h3 {
 
 .breakdown-row:last-child { border-bottom: none; }
 
-.slot-label { font-size: 0.8rem; color: #888; width: 48px; flex-shrink: 0; }
-.slot-food { flex: 1; font-size: 0.9rem; }
-.slot-type { font-size: 0.8rem; color: #888; }
+.slot-label { font-size: var(--f14); color: var(--font-color); width: 48px; flex-shrink: 0; }
+.slot-food { flex: 1; font-size: var(--f16); }
+.slot-type { font-size: var(--f14); color: var(--font-color); }
+
 .tag-other {
-  font-size: 0.72rem;
+  font-size: var(--f14);
   padding: 2px 8px;
   background: rgba(156, 163, 175, 0.15);
   color: #9ca3af;
@@ -352,16 +324,15 @@ h2, h3 {
 
 .tips {
   background: rgba(250, 204, 21, 0.08);
-  border-left: 4px solid #facc15;
+  border-left: 4px solid var(--score-medium);
   border-radius: 8px;
   padding: 14px 16px;
 }
 
-.tips h4 { margin: 0 0 8px; color: #facc15; font-size: 0.9rem; }
+.tips h4 { margin: 0 0 8px; color: var(--score-medium); font-size: var(--f16); }
 .tips ul { margin: 0; padding-left: 18px; }
-.tips li { font-size: 0.88rem; color: #d4b017; margin-bottom: 4px; }
+.tips li { font-size: var(--f16); color: var(--score-medium); margin-bottom: 4px; }
 
-/* 歷史紀錄 */
 .history-section { display: flex; flex-direction: column; }
 
 .skeleton-list { display: flex; flex-direction: column; gap: 10px; }
@@ -388,26 +359,20 @@ h2, h3 {
   border-radius: 10px;
 }
 
-.error-text {
-  color: #f87171;
-  font-size: 0.9rem;
-  margin: 0;
-}
+.error-text { color: var(--color-danger); font-size: var(--f16); margin: 0; }
 
 .retry-btn {
   padding: 6px 18px;
   background: none;
-  border: 1px solid #f87171;
-  color: #f87171;
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: var(--f14);
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.retry-btn:hover {
-  background: rgba(248, 113, 113, 0.1);
-}
+.retry-btn:hover { background: rgba(248, 113, 113, 0.1); }
 
 .empty-guide {
   display: flex;
@@ -415,26 +380,14 @@ h2, h3 {
   align-items: center;
   gap: 6px;
   padding: 32px 16px;
-  color: #666;
+  color: var(--font-color);
 }
 
-.empty-icon {
-  font-size: 2.4rem;
-  margin: 0;
-}
+.empty-icon { font-size: 2.4rem; margin: 0; }
 
-.empty-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #888;
-  margin: 0;
-}
+.empty-title { font-size: var(--f18); font-weight: 600; color: var(--font-color); margin: 0; }
 
-.empty-hint {
-  font-size: 0.85rem;
-  color: #555;
-  margin: 0;
-}
+.empty-hint { font-size: var(--f14); color: var(--font-color); margin: 0; }
 
 .record-list { display: flex; flex-direction: column; gap: 10px; }
 
@@ -452,7 +405,27 @@ h2, h3 {
   margin-bottom: 6px;
 }
 
-.record-date { font-size: 0.82rem; color: #666; }
-.record-score { font-weight: 700; font-size: 1rem; }
-.record-foods { font-size: 0.88rem; color: #aaa; }
+.record-date { font-size: var(--f14); color: var(--font-color); }
+.record-score { font-weight: 700; font-size: var(--f18); }
+.record-foods { font-size: var(--f16); color: var(--font-color); }
+
+@media (max-width: 1024px) {
+  .home-page { padding: 24px 20px 48px; gap: 24px; }
+}
+
+@media (max-width: 768px) {
+  .home-page { padding: 20px 16px 40px; gap: 20px; }
+  .score-card { padding: 16px 20px; }
+  .breakdown-row { gap: 8px; }
+}
+
+@media (max-width: 480px) {
+  .home-page { padding: 32px 12px; gap: 16px; }
+  .input-section h3 { margin-bottom: 0; }
+  .submit-btn{ margin-top: 8px}
+  .slot-label { width: 36px; }
+  .breakdown-row { flex-wrap: wrap; }
+  .history-section{ margin-top: 16px}
+  .record-card { padding: 10px 12px; }
+}
 </style>

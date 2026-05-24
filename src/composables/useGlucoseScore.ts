@@ -3,7 +3,7 @@ import { FoodType } from '../types';
 import type { IMealItem, IScoringResult } from '../types';
 import { calculateMealScore } from '../services/scoringAlgorithm';
 
-const EMPTY_RESULT: IScoringResult = { totalScore: 0, breakdown: [], tips: [] };
+const EMPTY_RESULT: IScoringResult = { totalScore: 0, scorableCount: 0, inversions: 0, maxInversions: 0, breakdown: [], tips: [] };
 
 type MealSequence = [FoodType] | [FoodType, FoodType] | [FoodType, FoodType, FoodType];
 

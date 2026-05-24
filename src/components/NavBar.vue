@@ -1,14 +1,23 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import ThemeSwitcher from './ThemeSwitcher.vue';
 import oasLogo from '../assets/oas_logo.png';
 
 const authStore = useAuthStore();
+const menuOpen = ref(false);
+
+function closeMenu() {
+  menuOpen.value = false;
+}
 </script>
 
 <template>
   <nav class="navbar">
-    <router-link to="/"><img class="logo" :src="oasLogo" alt="Orderly & Steady" /></router-link>
+    <router-link to="/" @click="closeMenu">
+      <img class="logo" :src="oasLogo" alt="Orderly & Steady" />
+    </router-link>
+
     <div class="nav-actions">
       <router-link to="/why" class="nav-link">為什麼控糖？</router-link>
       <ThemeSwitcher />
@@ -18,6 +27,20 @@ const authStore = useAuthStore();
           <circle cx="12" cy="7" r="4"/>
         </svg>
       </router-link>
+      <button
+        class="hamburger"
+        @click="menuOpen = !menuOpen"
+        :aria-expanded="menuOpen"
+        aria-label="選單"
+      >
+        {{ menuOpen ? '✕' : '☰' }}
+      </button>
+    </div>
+
+    <div v-if="menuOpen" class="mobile-menu">
+      <router-link to="/" class="mobile-link" @click="closeMenu">首頁</router-link>
+      <router-link to="/why" class="mobile-link" @click="closeMenu">為什麼控糖？</router-link>
+      <router-link v-if="authStore.isLoggedIn" to="/member" class="mobile-link" @click="closeMenu">我的會員</router-link>
     </div>
   </nav>
 </template>
@@ -25,11 +48,11 @@ const authStore = useAuthStore();
 <style scoped>
 .navbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  background: var(--bg-color, #1a1a1a);
-  border-bottom: 1px solid var(--border-color, #333);
+  background: var(--bg-color);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -48,7 +71,7 @@ const authStore = useAuthStore();
 }
 
 .nav-link {
-  font-size: 0.88rem;
+  font-size: var(--f16);
   font-weight: 500;
   color: var(--font-color-h);
   text-decoration: none;
@@ -70,5 +93,57 @@ const authStore = useAuthStore();
 
 .user-icon:hover {
   opacity: 0.7;
+}
+
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--font-color-h);
+  font-size: var(--f20);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.mobile-menu {
+  width: 100%;
+  display: none;
+  flex-direction: column;
+  background: var(--bg-color);
+}
+
+.mobile-link {
+  padding: 14px 24px;
+  color: var(--font-color-h);
+  text-decoration: none;
+  font-size: var(--f16);
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s, color 0.2s;
+}
+
+
+.mobile-link:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+@media (max-width: 1024px) {
+  .navbar { padding: 12px 20px; }
+}
+
+@media (max-width: 768px) {
+  .logo { height: 28px; }
+  .nav-link { font-size: var(--f14); }
+}
+
+@media (max-width: 480px) {
+  .navbar { padding: 10px 16px 0 16px; }
+  .nav-actions{ gap: 8px; }
+  .nav-link { display: none; }
+  .user-icon { display: none; }
+  .hamburger { display: flex; align-items: center; }
+  .mobile-menu { display: flex; }
+  .mobile-link { padding: 8px 16px; }
 }
 </style>

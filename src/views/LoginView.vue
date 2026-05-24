@@ -59,7 +59,7 @@ async function handleSubmit() {
         <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
 
         <button type="submit" class="submit-btn" :disabled="isLoading">
-          {{ isLoading ? '登入中...' : (tab === 'login' ? '登入' : '註冊') }}
+          {{ isLoading ? (tab === 'login' ? '登入中...' : '註冊中...') : (tab === 'login' ? '登入' : '註冊') }}
         </button>
       </form>
     </div>
@@ -86,17 +86,17 @@ async function handleSubmit() {
 
 .title {
   margin: 0 0 4px;
-  font-size: 1.8rem;
+  font-size: var(--f32);
   font-family: 'Sigmar', system-ui, sans-serif;
-  color: #4ade80;
+  color: var(--accent);
   text-align: center;
 }
 
 .subtitle {
   margin: 0 0 28px;
-  color: #888;
+  color: var(--font-color);
   text-align: center;
-  font-size: 0.9rem;
+  font-size: var(--f16);
 }
 
 .tabs {
@@ -111,34 +111,26 @@ async function handleSubmit() {
   padding: 10px;
   background: none;
   border: none;
-  color: #888;
+  color: var(--font-color);
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: var(--f16);
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   transition: color 0.2s, border-color 0.2s;
 }
 
 .tab.active {
-  color: #4ade80;
-  border-bottom-color: #4ade80;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+.form { display: flex; flex-direction: column; gap: 16px; }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+.field { display: flex; flex-direction: column; gap: 6px; }
 
 .field label {
-  font-size: 0.85rem;
-  color: #aaa;
+  font-size: var(--f14);
+  color: var(--font-color);
 }
 
 .field input {
@@ -147,40 +139,41 @@ async function handleSubmit() {
   border: 1px solid var(--border-color, #444);
   border-radius: 8px;
   color: inherit;
-  font-size: 0.95rem;
+  font-size: var(--f16);
   outline: none;
   transition: border-color 0.2s;
 }
 
-.field input:focus {
-  border-color: #4ade80;
-}
+.field input:focus { border-color: var(--accent); }
 
 .error {
-  color: #f87171;
-  font-size: 0.85rem;
+  color: var(--color-danger);
+  font-size: var(--f14);
   margin: 0;
 }
 
 .submit-btn {
   padding: 12px;
-  background: #4ade80;
-  color: #0a0a0a;
+  background: var(--accent);
+  color: var(--font-color-h);
   border: none;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: var(--f18);
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s;
   margin-top: 4px;
 }
 
-.submit-btn:hover:not(:disabled) {
-  opacity: 0.85;
+.submit-btn:hover:not(:disabled) { opacity: 0.85; }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 768px) {
+  .login-card { padding: 28px 20px; border-radius: 12px; }
 }
 
-.submit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+@media (max-width: 480px) {
+  .login-page { padding: 12px; }
+  .login-card { padding: 24px 16px; }
 }
 </style>

@@ -72,7 +72,7 @@ const activeIndex = computed(() => options.findIndex((o) => o.value === themeMod
   width: calc((100% - 8px) / 3);
   height: calc(100% - 8px);
   background: var(--switcher-indicator);
-  border-radius: 10px;
+  border-radius: 999px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   transition: transform 0.3s ease-in-out;
   pointer-events: none;
@@ -105,5 +105,9 @@ const activeIndex = computed(() => options.findIndex((o) => o.value === themeMod
 
 .option.active {
   color: var(--switcher-active);
+}
+
+@media (max-width: 480px){
+  .option { padding: 4px 6px; min-width: 30px; }
 }
 </style>

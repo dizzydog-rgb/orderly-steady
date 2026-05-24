@@ -55,10 +55,7 @@ async function handleLogout() {
   padding: 36px 32px;
 }
 
-h2 {
-  margin: 0 0 24px;
-  font-size: 1.4rem;
-}
+h2 { margin: 0 0 24px; font-size: var(--f24); }
 
 .info-row {
   display: flex;
@@ -68,14 +65,9 @@ h2 {
   border-bottom: 1px solid var(--border-color, #333);
 }
 
-.label {
-  font-size: 0.85rem;
-  color: #888;
-}
+.label { font-size: var(--f14); color: var(--font-color); }
 
-.value {
-  font-size: 0.95rem;
-}
+.value { font-size: var(--f16); }
 
 .actions {
   display: flex;
@@ -84,28 +76,34 @@ h2 {
   margin-top: 28px;
 }
 
-.back-link {
-  color: #4ade80;
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-.back-link:hover {
-  text-decoration: underline;
-}
+.back-link { color: var(--accent); text-decoration: none; font-size: var(--f16); }
+.back-link:hover { text-decoration: underline; }
 
 .logout-btn {
   padding: 8px 20px;
   background: none;
-  border: 1px solid #f87171;
-  color: #f87171;
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--f16);
   transition: background 0.2s;
 }
 
-.logout-btn:hover {
-  background: rgba(248, 113, 113, 0.1);
+.logout-btn:hover { background: rgba(248, 113, 113, 0.1); }
+
+@media (max-width: 1024px) {
+  .member-card { padding: 28px 24px; }
+}
+
+@media (max-width: 768px) {
+  .member-card { padding: 24px 20px; }
+}
+
+@media (max-width: 480px) {
+  .member-page { padding: 20px 12px; }
+  .member-card { padding: 20px 16px; border-radius: 12px; }
+  .info-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .actions { gap: 12px; }
 }
 </style>

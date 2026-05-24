@@ -1,6 +1,6 @@
 :root {
   --font-color: #6b6375;
-  --font-color-h: #08060d;
+  --font-color-h: #2C3E50;
   --bg-color: #fff;
   --border-color: #e5e4e7;
   --code-bg-color: #f4f3ec;
@@ -37,6 +37,15 @@
   --switcher-active: #111111;
   --switcher-inactive: #888888;
   --switcher-hover: #555555;
+
+  --f56: 56px;
+  --f36: 36px;
+  --f32: 32px;
+  --f24: 24px;
+  --f20: 20px;
+  --f18: 18px;
+  --f16: 16px;
+  --f14: 14px;
 
   font: 18px/145% var(--font-sans);
   letter-spacing: 0.18px;
@@ -110,22 +119,18 @@ h2 {
 }
 
 h1 {
-  font-size: 56px;
+  font-size: var(--f56);
   letter-spacing: -1.68px;
   margin: 32px 0;
   @media (max-width: 1024px) {
-    font-size: 36px;
     margin: 20px 0;
   }
 }
 h2 {
-  font-size: 24px;
+  font-size: var(--f24);
   line-height: 118%;
   letter-spacing: -0.24px;
   margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
 }
 p {
   margin: 0;
@@ -340,5 +345,44 @@ code {
   &::after {
     right: 0;
     border-right-color: var(--border-color);
+  }
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --f56: 36px;
+    --f36: 28px;
+    --f32: 24px;
+    --f24: 20px;
+    --f20: 18px;
+    --f18: 16px;
+    --f16: 15px;
+    --f14: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --f56: 28px;
+    --f36: 24px;
+    --f32: 20px;
+    --f24: 18px;
+    --f20: 17px;
+    --f18: 15px;
+    --f16: 14px;
+    --f14: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --f56: 24px;
+    --f36: 22px;
+    --f32: 18px;
+    --f24: 17px;
+    --f20: 16px;
+    --f18: 14px;
+    --f16: 13px;
+    --f14: 12px;
   }
 }
