@@ -16,7 +16,7 @@
 
 **m >= 2（pair 計算）**
 1. 輸入「菠菜 → 雞蛋 → 精緻糖」（FIBER→PROTEIN→SIMPLE_CARB）→ 高分（≥ 85）
-2. 輸入「珍珠奶茶 → 雞腿 → 菠菜」（SIMPLE_CARB→PROTEIN→FIBER）→ 低分（≤ 15）
+2. 輸入「珍珠奶茶 → 雞腿 → 菠菜」（SIMPLE_CARB→PROTEIN→FIBER）→ 低分（≥ 20，不低於單食 SC）
 3. 輸入「優格 → 珍珠奶茶 → 其他」（PROTEIN→SIMPLE_CARB，scorable=2，SC index=1，扣 10）→ pair 計算結果 - 10
 4. 輸入「菠菜 → 雞蛋」（FIBER→PROTEIN，pair score=10/10，無懲罰）→ 100
 
@@ -24,7 +24,7 @@
 5. 輸入「珍珠奶茶 → 其他 → 其他」（scorable=[SC]）→ totalScore = 20，tips 含精緻糖警告 + 均衡建議
 6. 輸入「菠菜 → 其他 → 其他」（scorable=[FIBER]）→ totalScore = 60，tips 含均衡建議
 7. 輸入「雞蛋 → 其他 → 其他」（scorable=[PROTEIN]）→ totalScore = 60，tips 含均衡建議
-8. 輸入「糙米 → 其他 → 其他」（scorable=[CC]）→ totalScore = 60，tips 含均衡建議
+8. 輸入「糙米 → 其他 → 其他」（scorable=[CC]）→ totalScore = 40，tips 含均衡建議
 
 **m === 0**
 9. 輸入「其他 → 其他 → 其他」（scorable=0）→ totalScore = null，tip: '未記錄任何可評分食物'
@@ -37,10 +37,10 @@
 
 ```typescript
 const SCORE_MATRIX: Record<string, Record<string, number>> = {
-  FIBER:        { FIBER: 5, PROTEIN: 10, COMPLEX_CARB: 8, SIMPLE_CARB: 8 },  // F→SC: 8
-  PROTEIN:      { FIBER: 8, PROTEIN:  5, COMPLEX_CARB: 7, SIMPLE_CARB: 9 },  // P→SC: 9
-  COMPLEX_CARB: { FIBER: 5, PROTEIN:  5, COMPLEX_CARB: 5, SIMPLE_CARB: 3 },
-  SIMPLE_CARB:  { FIBER: 1, PROTEIN:  1, COMPLEX_CARB: 1, SIMPLE_CARB: 0 },  // SC→*: 全降為 1
+  FIBER:        { FIBER: 5, PROTEIN: 10, COMPLEX_CARB: 10, SIMPLE_CARB: 8 },  // F→CC: 10（理想轉換）
+  PROTEIN:      { FIBER: 8, PROTEIN:  5, COMPLEX_CARB: 10, SIMPLE_CARB: 8 },  // P→CC: 10（理想結尾）
+  COMPLEX_CARB: { FIBER: 5, PROTEIN:  5, COMPLEX_CARB:  5, SIMPLE_CARB: 3 },
+  SIMPLE_CARB:  { FIBER: 6, PROTEIN:  6, COMPLEX_CARB:  4, SIMPLE_CARB: 0 },  // SC→F/P: 6（回補），SC→CC: 4，SC→SC: 0
 };
 ```
 
@@ -57,8 +57,9 @@ const WEIGHT: Record<number, number> = { 1: 1.5, 2: 1.0 };
 ### 3.3 SIMPLE_CARB_PENALTY（scorable 陣列 index → 扣分）
 
 ```typescript
-const SIMPLE_CARB_PENALTY: Record<number, number> = { 0: 30, 1: 10 };
+const SIMPLE_CARB_PENALTY: Record<number, number> = { 0: 10, 1: 10 };
 // 掃描所有 SIMPLE_CARB 位置，取最大扣分，不疊加
+// SC→* 矩陣值已反映「回補」效果，penalty 統一為 10（首位或第二位）
 ```
 
 ### 3.4 計分決策樹（三分支）
@@ -78,13 +79,13 @@ m === 1  （硬編碼常數，完全不進入 pair 計算）
   │       '請加入膳食纖維、蛋白質、複合碳水以達到飲食均衡。'
   ├─ singleType === FIBER
   │   ├─ totalScore = 60
-  │   └─ tips: '請加入蛋白質、複合碳水、精緻糖以達到飲食均衡。'
+  │   └─ tips: '請加入蛋白質、複合碳水以達到飲食均衡。'
   ├─ singleType === PROTEIN
   │   ├─ totalScore = 60
-  │   └─ tips: '請加入膳食纖維、複合碳水、精緻糖以達到飲食均衡。'
+  │   └─ tips: '請加入膳食纖維、複合碳水以達到飲食均衡。'
   └─ singleType === COMPLEX_CARB
-      ├─ totalScore = 60
-      └─ tips: '請加入膳食纖維、蛋白質、精緻糖以達到飲食均衡。'
+      ├─ totalScore = 40
+      └─ tips: '請加入膳食纖維、蛋白質以達到飲食均衡。'
 
   缺少類型的排列固定依 PRIORITY 順序（FIBER→PROTEIN→COMPLEX_CARB→SIMPLE_CARB），
   不依 filter 迭代順序，確保輸出穩定。
@@ -138,12 +139,12 @@ SCORE_MATRIX 及 PENALTY 掃描時，需將 FoodType value 反查為 key 名稱�
 
 ```typescript
 const SCORE_MATRIX: Record<string, Record<string, number>> = {
-  'F':  { 'F': 5, 'P': 10, 'CC': 8, 'SC': 8 },
-  'P':  { 'F': 8, 'P':  5, 'CC': 7, 'SC': 9 },
-  'CC': { 'F': 5, 'P':  5, 'CC': 5, 'SC': 3 },
-  'SC': { 'F': 1, 'P':  1, 'CC': 1, 'SC': 0 },
+  'F':  { 'F': 5, 'P': 10, 'CC': 10, 'SC': 8 },
+  'P':  { 'F': 8, 'P':  5, 'CC': 10, 'SC': 8 },
+  'CC': { 'F': 5, 'P':  5, 'CC':  5, 'SC': 3 },
+  'SC': { 'F': 6, 'P':  6, 'CC':  4, 'SC': 0 },
 };
-const SIMPLE_CARB_PENALTY: Record<number, number> = { 0: 30, 1: 10 };
+const SIMPLE_CARB_PENALTY: Record<number, number> = { 0: 10, 1: 10 };
 ```
 
 後端維持 Prisma enum 名稱字串（`'FIBER'`, `'PROTEIN'`…）。
@@ -194,8 +195,8 @@ export interface IScoringResult {
 - [x] Task 9：更新 `prisma/schema.prisma`（移除 FoodItem 三欄）
 - [x] Task 10：更新 `server/routes/meals.ts`（m=0 跳過 DB；FoodItem 不寫舊欄位）
 - [x] Task 11：更新 `CLAUDE.md` 演算法描述
-- [ ] Task 12：`npx prisma migrate dev`（需 DB 連線）
-- [ ] Task 13：端對端手動驗收（前後端同時啟動，逐案測試 Test Flow）
+- [x] Task 12：`npx prisma migrate dev`（需 DB 連線）
+- [x] Task 13：端對端手動驗收（前後端同時啟動，逐案測試 Test Flow）
 
 ---
 
@@ -205,9 +206,10 @@ export interface IScoringResult {
 
 | 情境 | 預期 totalScore | 實際計算值 |
 |------|----------------|-----------|
-| FIBER→PROTEIN→SIMPLE_CARB | ≥ 85 | 91 |
-| SIMPLE_CARB→PROTEIN→FIBER（完全差序） | ≤ 15 | 6 |
-| PROTEIN→SIMPLE_CARB（scorable=2，SC index=1，扣 10） | pair 分數 - 10 | 90-10=80 |
+| FIBER→PROTEIN→COMPLEX_CARB（理想順序） | 100 | 100 |
+| FIBER→PROTEIN→SIMPLE_CARB | ≥ 85 | 88 |
+| SIMPLE_CARB→PROTEIN→FIBER | > 單食 SC (20) | 58 |
+| PROTEIN→SIMPLE_CARB（scorable=2，SC index=1，扣 10） | pair 分數 - 10 | 80-10=70 |
 | FIBER→PROTEIN（scorable=2，無懲罰） | 100 | 100 |
 
 **m === 1 分支**
@@ -217,7 +219,7 @@ export interface IScoringResult {
 | scorable=[SIMPLE_CARB] | 20 | 2 |
 | scorable=[FIBER] | 60 | 1 |
 | scorable=[PROTEIN] | 60 | 1 |
-| scorable=[COMPLEX_CARB] | 60 | 1 |
+| scorable=[COMPLEX_CARB] | 40 | 1 |
 
 **m === 0 分支**
 
@@ -225,9 +227,9 @@ export interface IScoringResult {
 |------|----------------|
 | OTHER→OTHER→OTHER | null |
 
-- [ ] 單元測試全過（`npm run test`）
-- [ ] 前端型別編譯無誤（`npm run build`）
-- [ ] 前後端輸入相同食物類別序列時，得到相同 totalScore
-- [ ] `src/types/index.ts` 的 `totalScore` 為 `number | null`
-- [ ] 前端顯示 null 時不崩潰（null guard）
-- [ ] m===1 均衡建議文字缺少類型按 FIBER→PROTEIN→COMPLEX_CARB→SIMPLE_CARB 順序排列
+- [x] 單元測試全過（`npm run test`）21/21
+- [x] 前端型別編譯無誤（`npm run build`）
+- [x] 前後端輸入相同食物類別序列時，得到相同 totalScore（SC row 值相同確認）
+- [x] `src/types/index.ts` 的 `totalScore` 為 `number | null`
+- [x] 前端顯示 null 時不崩潰（null guard）
+- [x] m===1 均衡建議文字缺少類型按 FIBER→PROTEIN→COMPLEX_CARB 順序排列（不建議精緻糖）

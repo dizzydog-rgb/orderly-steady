@@ -13,15 +13,17 @@ describe('calculateMealScore — all_pair 加權矩陣', () => {
       expect(result.scorableCount).toBe(3);
     });
 
-    it('SIMPLE_CARB→PROTEIN→FIBER（完全差序）應 ≤ 15', () => {
+    it('SIMPLE_CARB→PROTEIN→FIBER 應高於單食 SC（20）', () => {
+      // SC→P=6, SC→F=6, P→F=8; (6×1.5+6×1.0+8×1.5)/40×100=68, penalty[0]=10 → 58
       const result = calculateMealScore([FoodType.SIMPLE_CARB, FoodType.PROTEIN, FoodType.FIBER]);
-      expect(result.totalScore).toBeLessThanOrEqual(15);
+      expect(result.totalScore).toBe(58);
       expect(result.totalScore).not.toBeNull();
     });
 
     it('PROTEIN→SIMPLE_CARB（scorable=2，SC index=1，扣 10）', () => {
+      // P→SC=8: 8*1.5/15*100=80, -10(SC idx=1) → 70
       const result = calculateMealScore([FoodType.PROTEIN, FoodType.SIMPLE_CARB]);
-      expect(result.totalScore).toBe(80);
+      expect(result.totalScore).toBe(70);
       expect(result.scorableCount).toBe(2);
     });
 
@@ -30,10 +32,16 @@ describe('calculateMealScore — all_pair 加權矩陣', () => {
       expect(result.totalScore).toBe(100);
     });
 
-    it('SC 首位（scorable=2）扣 30 分', () => {
-      // SC→P: weightedRaw=1*1.5=1.5, max=15 → round(10) = 10, -30 → max(0,0) = 0
+    it('FIBER→PROTEIN→COMPLEX_CARB（理想順序）應得 100', () => {
+      const result = calculateMealScore([FoodType.FIBER, FoodType.PROTEIN, FoodType.COMPLEX_CARB]);
+      expect(result.totalScore).toBe(100);
+      expect(result.scorableCount).toBe(3);
+    });
+
+    it('SC→P（scorable=2）= 單獨 P (60) − penalty (10) = 50', () => {
+      // SC→P=6: 6×1.5/15×100=60, penalty[0]=10 → 50
       const result = calculateMealScore([FoodType.SIMPLE_CARB, FoodType.PROTEIN]);
-      expect(result.totalScore).toBe(0);
+      expect(result.totalScore).toBe(50);
     });
 
     it('OTHER 排除後計算（FIBER→OTHER→SIMPLE_CARB，scorable=[F,SC]）', () => {
@@ -89,14 +97,14 @@ describe('calculateMealScore — all_pair 加權矩陣', () => {
       expect(result.tips[1]).toContain('複合碳水');
     });
 
-    it('FIBER → totalScore=60，tips 1 條，缺少蛋白質、複合碳水、精緻糖', () => {
+    it('FIBER → totalScore=60，tips 1 條，建議加入蛋白質和複合碳水', () => {
       const result = calculateMealScore([FoodType.FIBER]);
       expect(result.totalScore).toBe(60);
       expect(result.scorableCount).toBe(1);
       expect(result.tips).toHaveLength(1);
       expect(result.tips[0]).toContain('蛋白質');
       expect(result.tips[0]).toContain('複合碳水');
-      expect(result.tips[0]).toContain('精緻糖');
+      expect(result.tips[0]).not.toContain('精緻糖');
     });
 
     it('PROTEIN → totalScore=60，tips 含膳食纖維', () => {
@@ -105,16 +113,16 @@ describe('calculateMealScore — all_pair 加權矩陣', () => {
       expect(result.tips[0]).toContain('膳食纖維');
     });
 
-    it('COMPLEX_CARB → totalScore=60，tips 含膳食纖維', () => {
+    it('COMPLEX_CARB → totalScore=40，tips 含膳食纖維', () => {
       const result = calculateMealScore([FoodType.COMPLEX_CARB]);
-      expect(result.totalScore).toBe(60);
+      expect(result.totalScore).toBe(40);
       expect(result.tips[0]).toContain('膳食纖維');
     });
 
-    it('m=1 均衡建議缺少類型依 FIBER→PROTEIN→COMPLEX_CARB→SIMPLE_CARB 順序', () => {
+    it('m=1 均衡建議缺少類型依 FIBER→PROTEIN→COMPLEX_CARB 順序（不建議精緻糖）', () => {
       const result = calculateMealScore([FoodType.FIBER, FoodType.OTHER]);
-      // scorable=[F], m=1 → 均衡建議應為「蛋白質、複合碳水、精緻糖」
-      expect(result.tips[0]).toBe('請加入蛋白質、複合碳水、精緻糖以達到飲食均衡。');
+      // scorable=[F], m=1 → 均衡建議應為「蛋白質、複合碳水」
+      expect(result.tips[0]).toBe('請加入蛋白質、複合碳水以達到飲食均衡。');
     });
   });
 

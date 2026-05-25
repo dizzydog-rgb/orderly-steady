@@ -2,14 +2,14 @@ import { FoodType } from '../types';
 import type { IFoodBreakdown, IScoringResult } from '../types';
 
 const SCORE_MATRIX: Record<string, Record<string, number>> = {
-  'F':  { 'F': 5, 'P': 10, 'CC': 8, 'SC': 8 },
-  'P':  { 'F': 8, 'P':  5, 'CC': 7, 'SC': 9 },
-  'CC': { 'F': 5, 'P':  5, 'CC': 5, 'SC': 3 },
-  'SC': { 'F': 1, 'P':  1, 'CC': 1, 'SC': 0 },
+  'F':  { 'F': 5, 'P': 10, 'CC': 10, 'SC': 8 },
+  'P':  { 'F': 8, 'P':  5, 'CC': 10, 'SC': 8 },
+  'CC': { 'F': 5, 'P':  5, 'CC':  5, 'SC': 3 },
+  'SC': { 'F': 6, 'P':  6, 'CC':  4, 'SC': 0 },
 };
 
 const WEIGHT: Record<number, number> = { 1: 1.5, 2: 1.0 };
-const SIMPLE_CARB_PENALTY: Record<number, number> = { 0: 30, 1: 10 };
+const SIMPLE_CARB_PENALTY: Record<number, number> = { 0: 10, 1: 10 };
 
 const PRIORITY: Partial<Record<string, number>> = {
   [FoodType.FIBER]: 0,
@@ -68,7 +68,7 @@ export function calculateMealScore(sequence: string[]): IScoringResult {
 
   if (m === 1) {
     const singleType = scorable[0];
-    const missing = PRIORITY_ORDER.filter(t => t !== singleType);
+    const missing = PRIORITY_ORDER.filter(t => t !== singleType && t !== FoodType.SIMPLE_CARB);
     const missingText = missing.map(t => TYPE_LABELS[t]).join('、');
 
     if (singleType === FoodType.SIMPLE_CARB) {
@@ -80,6 +80,14 @@ export function calculateMealScore(sequence: string[]): IScoringResult {
           '此餐以精緻糖為主，血糖波動風險高。',
           `請加入${missingText}以達到飲食均衡。`,
         ],
+      };
+    }
+    if (singleType === FoodType.COMPLEX_CARB) {
+      return {
+        totalScore: 40,
+        scorableCount: 1,
+        breakdown,
+        tips: [`請加入${missingText}以達到飲食均衡。`],
       };
     }
     return {

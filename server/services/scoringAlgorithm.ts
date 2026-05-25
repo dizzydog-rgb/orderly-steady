@@ -15,14 +15,14 @@ export interface IScoringResult {
 }
 
 const SCORE_MATRIX: Record<string, Record<string, number>> = {
-  FIBER:        { FIBER: 5, PROTEIN: 10, COMPLEX_CARB: 8, SIMPLE_CARB: 8 },
-  PROTEIN:      { FIBER: 8, PROTEIN:  5, COMPLEX_CARB: 7, SIMPLE_CARB: 9 },
-  COMPLEX_CARB: { FIBER: 5, PROTEIN:  5, COMPLEX_CARB: 5, SIMPLE_CARB: 3 },
-  SIMPLE_CARB:  { FIBER: 1, PROTEIN:  1, COMPLEX_CARB: 1, SIMPLE_CARB: 0 },
+  FIBER:        { FIBER: 5, PROTEIN: 10, COMPLEX_CARB: 10, SIMPLE_CARB: 8 },
+  PROTEIN:      { FIBER: 8, PROTEIN:  5, COMPLEX_CARB: 10, SIMPLE_CARB: 8 },
+  COMPLEX_CARB: { FIBER: 5, PROTEIN:  5, COMPLEX_CARB:  5, SIMPLE_CARB: 3 },
+  SIMPLE_CARB:  { FIBER: 6, PROTEIN:  6, COMPLEX_CARB:  4, SIMPLE_CARB: 0 },
 };
 
 const WEIGHT: Record<number, number> = { 1: 1.5, 2: 1.0 };
-const SIMPLE_CARB_PENALTY: Record<number, number> = { 0: 30, 1: 10 };
+const SIMPLE_CARB_PENALTY: Record<number, number> = { 0: 10, 1: 10 };
 
 const PRIORITY: Partial<Record<FoodType, number>> = {
   [FoodType.FIBER]: 0,
@@ -81,7 +81,7 @@ export function calculateMealScore(sequence: FoodType[]): IScoringResult {
 
   if (m === 1) {
     const singleType = scorable[0];
-    const missing = PRIORITY_ORDER.filter(t => t !== singleType);
+    const missing = PRIORITY_ORDER.filter(t => t !== singleType && t !== FoodType.SIMPLE_CARB);
     const missingText = missing.map(t => TYPE_LABELS[t]).join('、');
 
     if (singleType === FoodType.SIMPLE_CARB) {
@@ -93,6 +93,14 @@ export function calculateMealScore(sequence: FoodType[]): IScoringResult {
           '此餐以精緻糖為主，血糖波動風險高。',
           `請加入${missingText}以達到飲食均衡。`,
         ],
+      };
+    }
+    if (singleType === FoodType.COMPLEX_CARB) {
+      return {
+        totalScore: 40,
+        scorableCount: 1,
+        breakdown,
+        tips: [`請加入${missingText}以達到飲食均衡。`],
       };
     }
     return {
