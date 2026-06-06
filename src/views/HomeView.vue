@@ -120,7 +120,7 @@ function numToChinese(n: number): string { return SLOT_CHARS[n] ?? String(n); }
 
 const FOOD_TYPE_LABELS: Record<string, string> = {
   FIBER: '膳食纖維', PROTEIN: '蛋白質', COMPLEX_CARB: '複合碳水',
-  SIMPLE_CARB: '精緻糖', OTHER: '其他',
+  SIMPLE_CARB: '精緻碳水', OTHER: '其他',
 };
 function foodTypeLabel(type: string | null): string {
   return type ? (FOOD_TYPE_LABELS[type] ?? type) : '—';

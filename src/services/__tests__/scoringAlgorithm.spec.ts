@@ -67,9 +67,9 @@ describe('calculateMealScore — all_pair 加權矩陣', () => {
       expect(result.tips).toContain('將「膳食纖維」放在第一口，能有效減緩餐後血糖上升。');
     });
 
-    it('SIMPLE_CARB 首位觸發空腹精緻糖 tip', () => {
+    it('SIMPLE_CARB 首位觸發空腹精緻碳水 tip', () => {
       const result = calculateMealScore([FoodType.SIMPLE_CARB, FoodType.PROTEIN]);
-      expect(result.tips).toContain('空腹攝取精緻糖會導致血糖劇烈波動，建議放在餐後。');
+      expect(result.tips).toContain('空腹攝取精緻碳水會導致血糖劇烈波動，建議放在餐後。');
     });
 
     it('FIBER→COMPLEX_CARB 觸發「搭配蛋白質」tip', () => {
@@ -91,7 +91,7 @@ describe('calculateMealScore — all_pair 加權矩陣', () => {
       expect(result.totalScore).toBe(20);
       expect(result.scorableCount).toBe(1);
       expect(result.tips).toHaveLength(2);
-      expect(result.tips[0]).toContain('精緻糖');
+      expect(result.tips[0]).toContain('精緻碳水');
       expect(result.tips[1]).toContain('膳食纖維');
       expect(result.tips[1]).toContain('蛋白質');
       expect(result.tips[1]).toContain('複合碳水');
@@ -104,7 +104,7 @@ describe('calculateMealScore — all_pair 加權矩陣', () => {
       expect(result.tips).toHaveLength(1);
       expect(result.tips[0]).toContain('蛋白質');
       expect(result.tips[0]).toContain('複合碳水');
-      expect(result.tips[0]).not.toContain('精緻糖');
+      expect(result.tips[0]).not.toContain('精緻碳水');
     });
 
     it('PROTEIN → totalScore=60，tips 含膳食纖維', () => {
@@ -119,7 +119,7 @@ describe('calculateMealScore — all_pair 加權矩陣', () => {
       expect(result.tips[0]).toContain('膳食纖維');
     });
 
-    it('m=1 均衡建議缺少類型依 FIBER→PROTEIN→COMPLEX_CARB 順序（不建議精緻糖）', () => {
+    it('m=1 均衡建議缺少類型依 FIBER→PROTEIN→COMPLEX_CARB 順序（不建議精緻碳水）', () => {
       const result = calculateMealScore([FoodType.FIBER, FoodType.OTHER]);
       // scorable=[F], m=1 → 均衡建議應為「蛋白質、複合碳水」
       expect(result.tips[0]).toBe('請加入蛋白質、複合碳水以達到飲食均衡。');

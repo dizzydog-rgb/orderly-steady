@@ -24,7 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
   [FoodType.FIBER]: '膳食纖維',
   [FoodType.PROTEIN]: '蛋白質',
   [FoodType.COMPLEX_CARB]: '複合碳水',
-  [FoodType.SIMPLE_CARB]: '精緻糖',
+  [FoodType.SIMPLE_CARB]: '精緻碳水',
 };
 
 function buildTips(scorable: string[], penalty: number, totalScore: number): string[] {
@@ -34,7 +34,7 @@ function buildTips(scorable: string[], penalty: number, totalScore: number): str
     tips.push('將「膳食纖維」放在第一口，能有效減緩餐後血糖上升。');
   }
   if (scorable[0] === FoodType.SIMPLE_CARB) {
-    tips.push('空腹攝取精緻糖會導致血糖劇烈波動，建議放在餐後。');
+    tips.push('空腹攝取精緻碳水會導致血糖劇烈波動，建議放在餐後。');
   }
   if (scorable.length >= 2 && scorable[0] === FoodType.FIBER && scorable[1] !== FoodType.PROTEIN) {
     tips.push('纖維之後搭配蛋白質，控糖效果更佳。');
@@ -77,7 +77,7 @@ export function calculateMealScore(sequence: string[]): IScoringResult {
         scorableCount: 1,
         breakdown,
         tips: [
-          '此餐以精緻糖為主，血糖波動風險高。',
+          '此餐以精緻碳水為主，血糖波動風險高。',
           `請加入${missingText}以達到飲食均衡。`,
         ],
       };
