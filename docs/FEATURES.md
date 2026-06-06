@@ -9,11 +9,13 @@
 - **狀態**: 🟢 已完成
 
 ### 1.2 即時分數計算與動態動畫
-- **行為描述**: 在使用者點選標籤時，系統即時更新總分。透過 GSAP 實作數值滾動動畫，使變化過程更加平滑自然。
-- **視覺回饋**: 
-  - **80-100**: 綠色（優良，血糖平穩）。
-  - **60-79**: 黃色（尚可，有改善空間）。
-  - **< 60**: 紅色（警示，建議調整順序）。
+- **行為描述**: 在使用者點選標籤時，系統即時更新總分。透過 GSAP 實作差異化動畫，使變化過程更加平滑自然。
+- **視覺回饋**:
+  - **≥80**: 綠色 — 彈跳綠光動畫（優良，血糖平穩）
+  - **60–79**: 黃色 — 淡入黃示（尚可，有改善空間）
+  - **40–59**: 橘色 — 震動黃綠動畫（需注意）
+  - **20–39**: 橘紅 — 震動橘色警告
+  - **<20**: 深紅 — 強烈震動紅色嚴重警報
 - **狀態**: 🟢 已完成
 
 ### 1.3 智慧飲食建議 (Health Tips)
@@ -32,21 +34,44 @@
   - 🟢 食物資料庫初始化（50 筆常見食物預設分類）
 - **狀態**: 🟢 已完成
 
-## 2.1 評分系統重設計（槽位配分制）
-- **行為描述**: 前端固定三個欄位（依序解鎖），總分 100 分制；唯一滿分路徑為 Fiber → Protein → Complex Carb。
-- **槽位配分**: Slot1（第一口）50 分、Slot2（第二口）30 分、Slot3（第三口）20 分；各槽依食物類別查表得分，空槽得 0 分。
+## 2.1 評分演算法（all_pair 加權矩陣）
+- **行為描述**: 前端固定三個欄位（依序解鎖），總分 100 分制；以 all_pair 加權矩陣計算任意食物序列的得分。
+- **演算法分支**:
+  - **m=0**（全為 OTHER）：`totalScore: null`，不寫入 DB。
+  - **m=1**（單一可評分食物）：SIMPLE_CARB → 20 分；其餘 → 60 分。
+  - **m≥2**：雙重迴圈所有 pair (i,j)，依距離加權（相鄰 ×1.5，跨越 ×1.0），查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB 首位 -30 分懲罰、index=1 -10 分懲罰。
+- **最佳路徑**: Fiber → Protein → Complex Carb = 100 分。
 - **狀態**: 🟢 已完成
 
 ## 3. 會員系統與 JWT 驗證 (Authentication)
 - **行為描述**：使用者可以註冊帳號、以 email + 密碼登入，取得 Access Token（15 分鐘有效）與 Refresh Token（7 天有效）存取受保護的 API。
 - **目前進度**：
   - 🟢 `POST /api/auth/register` — 新用戶註冊（bcrypt 密碼雜湊）
-  - 🟢 `POST /api/auth/login` — 登入，回傳 JWT token 對
+  - 🟢 `POST /api/auth/login` — 登入，回傳 Access Token；Refresh Token 存入 httpOnly cookie
   - 🟢 `POST /api/auth/refresh` — Refresh Token 輪換換發（舊 token 立即失效）
+  - 🟢 `POST /api/auth/logout` — 撤銷 DB 中 Refresh Token、清除 httpOnly cookie（需 Bearer Token）
   - 🟢 `GET /api/auth/me` — 取得目前登入使用者資訊（需 Bearer Token）
   - 🟢 `authMiddleware` — JWT 驗證中介層，可套用於任意受保護路由
+  - 🟢 Refresh Token 存 httpOnly cookie（`sameSite=strict`），Access Token 存 Pinia 記憶體
 - **狀態**: 🟢 已完成
 
 ## 4. 歷史趨勢視覺化 (Analytics)
-- **行為描述**: 在首頁歷史紀錄區塊上方，以 Chart.js 折線圖展示近期得分趨勢。圖表上方提供五個時間範圍按鈕（7天 / 14天 / 30天 / 3個月 / 半年），預設顯示最近 7 天；切換時有 GSAP + Chart.js 過場動畫。歷史資料由 Pinia store 快取，不重複發起請求。
+- **行為描述**: 在首頁歷史紀錄區塊上方，以 Chart.js 折線圖展示近期得分趨勢。圖表上方提供六個時間範圍按鈕（當日 / 7天 / 14天 / 30天 / 3個月 / 半年），預設顯示當日；切換時有 GSAP + Chart.js 過場動畫。歷史資料由 Pinia store 快取，不重複發起請求。
+- **狀態**: 🟢 已完成
+
+## 5. AI 食物分類 (AI Food Classification)
+- **行為描述**: 使用者輸入食物名稱後，後端呼叫 Claude Haiku API 自動分類為 FIBER / PROTEIN / COMPLEX_CARB / SIMPLE_CARB / OTHER 之一；分類結果快取至 `FoodDictionary` 資料表，相同名稱下次直接命中快取（log: `[AI] Cache hit`）。
+- **目前進度**:
+  - 🟢 Claude Haiku API 串接（`claude-haiku-4-5-20251001`）
+  - 🟢 DB 快取機制（`FoodDictionary` label 唯一索引）
+  - 🟢 `DELETE /api/food-dictionary` — 全清快取（需 Bearer Token）
+  - 🟢 `DELETE /api/food-dictionary/:label` — 清除單筆錯誤快取（需 Bearer Token）
+- **狀態**: 🟢 已完成
+
+## 6. 使用者介面 (UI / UX)
+- **目前進度**:
+  - 🟢 **主題切換**：System / Light / Dark 三態，`ThemeSwitcher` 膠囊控件含滑動指示器動畫；System 模式自動追蹤 OS 偏好（`matchMedia`）
+  - 🟢 **語言切換**：`LangSwitcher` 元件搭配 `useLang` composable，提供 CN / EN 切換；目前套用於「控糖科學」頁面
+  - 🟢 **衛教內容頁**（`/why`）：說明血糖波動原理與進食順序的科學依據，支援 CN/EN 語言切換，公開頁面無需登入
+  - 🟢 **響應式設計**：全站三斷點（1024 / 768 / 480px）自適應；NavBar 在 ≤480px 收合為漢堡選單
 - **狀態**: 🟢 已完成

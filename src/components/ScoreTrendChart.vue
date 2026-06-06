@@ -37,7 +37,7 @@ const LABEL_INTERVAL_DAYS: Record<number, number> = {
   180: 30,
 };
 
-const selectedDays = ref(7);
+const selectedDays = ref(0);
 const isTransitioning = ref(false);
 const chartWrapper = ref<HTMLElement | null>(null);
 let ctx: gsap.Context;

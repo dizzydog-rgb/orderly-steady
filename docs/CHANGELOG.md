@@ -2,6 +2,93 @@
 
 所有對「Orderly & Steady」專案的重要變更都將記錄在此文件中。
 
+## [0.9.1] - 2026-06-06
+
+### Added
+- **Zod Input Validation**：引入 `zod` 套件，對所有 API 入口的 request body 進行 schema 驗證，型別錯誤在進入 Controller 前即被攔截，回傳結構化 `{ error, details }` 400 回應。
+- **`server/middleware/validate.ts`**：通用 `validate()` middleware factory，接收任意 Zod schema；`safeParse` 失敗即中止請求，成功則以 `result.data`（已去除多餘欄位）覆寫 `req.body`。
+- **`server/schemas/auth.schemas.ts`**：`RegisterSchema`（email 格式、password ≥8 碼、name 可選 ≤50 字）與 `LoginSchema`，含 `z.infer` 型別匯出。
+- **`server/schemas/meals.schemas.ts`**：`CreateMealSchema`（email 格式、foods 1–3 項字串陣列），含 `z.infer` 型別匯出。
+
+### Changed
+- **`POST /api/auth/register` / `POST /api/auth/login`**：套用 `validate(RegisterSchema)` / `validate(LoginSchema)`，移除原有手動 `if (!email || !password)` truthy 檢查。
+- **`POST /api/meals`**：套用 `validate(CreateMealSchema)`，移除原有 `if (!email || !Array.isArray(foods) || ...)` 手動檢查。
+
+---
+
+## [0.9.0] - 2026-06-06
+
+### Added
+- **ScoreTrendChart 元件**（`src/components/ScoreTrendChart.vue`）：整合 vue-chartjs + chart.js，折線圖呈現近期得分趨勢；支援 7 / 14 / 30 / 90 / 180 天範圍切換（GSAP 淡入淡出過場）；自訂 `backgroundBandsPlugin` 在 canvas 繪製分數色帶（≥80 綠、60–80 黃、40–60 橘、20–40 淡紅、<20 深紅）；篩選後 < 2 筆時顯示提示文字，不渲染折線。
+- **Pinia history store**（`src/stores/history.ts`）：取代 module-level `useHistory` composable；`hasFetched` 旗標防重複請求；新增餐點後 `prependRecord()` 即時插入最新紀錄；`useAuthStore.logout()` 時自動重置快取。
+- **FoodDictionary 管理端點**：`DELETE /api/food-dictionary`（清除全部快取）與 `DELETE /api/food-dictionary/:label`（清除單筆），均需 Bearer token。
+- **`server/scripts/clearFoodDictionary.ts`**：可直接執行的快取清除 script。
+
+### Changed
+- **AI 分類精準化**：`server/services/ai.ts` 補充雞翅、火龍果等具體食物範例；回傳值改用 regex 解析，防止模型多餘文字導致分類 fallback。
+- **評分建議門檻**：`buildTips` 中「完美均衡飲食」正向提示改為 `totalScore >= 80` 觸發（原 `=== 100`）。
+- **`GET /api/meals/:userId`**：補上 `authMiddleware` 並驗證 userId 所有權（禁止跨帳號查詢）。
+- **全站用語**：「精緻糖」統一改為「精緻碳水」（AI prompt、演算法 tips、測試、文件全面同步）。
+
+### Fixed
+- 食物分類亂碼：`DATABASE_URL` 須含 `?charset=utf8mb4`，確保中文 label 正確寫入 DB。
+- `.tips li` 文字對齊改為 `text-align: left`。
+
+---
+
+## [0.8.0] - 2026-05-24
+
+### Added
+- **all_pair 加權矩陣演算法**：三分支決策樹（m=0 / m=1 / m≥2）。m≥2 時雙重迴圈所有 pair (i,j)，相鄰距離乘 ×1.5、跨越乘 ×1.0；查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB 首位懲罰 -30（index=0）、-10（index=1）。
+- **Prisma schema 擴充**：`FoodItem` 新增 `finalScore Float` 欄位，記錄每個槽位的得分貢獻。
+
+### Changed
+- **SCORE_MATRIX 校調**：F→CC 調至 8、P→CC 調至 7；SC row 加入回補值（SC→F:6、SC→P:6、SC→CC:4），防止 SC 首位過度懲罰；SIMPLE_CARB_PENALTY 統一降低至 {0: -30, 1: -10}。
+- **m=1 分支**：COMPLEX_CARB 單項得分由 60 分調至 40 分；tips 不再建議補充精緻碳水。
+- 前後端 `scoringAlgorithm.ts` 同步更新；單元測試案例同步補齊（15 項全過）。
+
+### Fixed
+- breakdown-row 版面：OTHER「不計分」標籤移至 `slot-type` 左側；`slot-right` 加上 `width: 96px + justify-content: flex-end`，避免標籤出現時食物名稱欄位位移。
+
+---
+
+## [0.7.0] - 2026-05-23
+
+### Added
+- **真實 AI 分類**：`server/services/ai.ts` 串接 Claude Haiku API（`claude-haiku-4-5-20251001`），取代關鍵字 mock 分類；需設定 `ANTHROPIC_API_KEY` 環境變數。
+- **OTHER 食物類別**：新增 `OTHER` Prisma enum 值（含 migration），酪梨、堅果、醬料等複合食物歸入此類，排除計分；HomeView breakdown 顯示「不計分」標籤。
+- **逆序對評分演算法**（此版過渡，v0.8.0 再重構）：以序列中違反 F→P→CC→SC 最佳順序的對數計算扣分；scorable ≤ 1 時回傳 100 分。
+- **RWD 三斷點**：1024 / 768 / 480px media query，全站字體尺寸與間距在各斷點自動縮放。
+- **NavBar 漢堡選單**：≤480px 收合為漢堡按鈕，展開顯示全頁導覽連結。
+- **`POST /api/meals` Rate Limiting**：每 IP 每分鐘 10 次（express-rate-limit），超過回 429。
+
+### Changed
+- **CSS 字體尺寸變數系統**：新增 `--f56` ~ `--f14` 變數，各 View 硬碼 font-size 全面替換為變數。
+- **`scoreColor()` 回傳格式**：改回傳 CSS 變數字串（如 `var(--score-green)`）而非 hex。
+
+### Fixed
+- `POST /api/meals` 回傳的 `foodItems` 補上 `orderBy: { sequenceIndex: 'asc' }`，修正未指定排序時 Prisma 回傳順序不確定的問題。
+
+---
+
+## [0.6.0] - 2026-05-23
+
+### Added
+- **ThemeSwitcher 元件**：System / Light / Dark 三態膠囊控件，含滑動指示器動畫與完整 ARIA 屬性；`useTheme` composable 搭配 `matchMedia` 自動追蹤 OS 偏好；`style.css` 改為 `html[data-theme="dark"]` class-based 切換。
+- **WhyView 頁面**（`/why`）：「控糖科學」衛教文章，公開頁面（`meta.public`）；NavBar 新增對應導覽連結。
+- **CN/EN 語言切換**：`LangSwitcher.vue` 元件與 `useLang` composable，切換中英文顯示。
+- **`POST /api/auth/logout` 端點**：撤銷 DB 中 `refreshToken`、清除 httpOnly cookie。
+- **`.env.example`**：新增所有必要環境變數範本。
+- **品牌資產更新**：favicon 改為 `oas_favicon.png`；NavBar logo 改為 `oas_logo.png`。
+
+### Changed
+- **Refresh Token 安全強化**：從 `localStorage` 遷移至 `httpOnly cookie`（`sameSite=strict`）；`COOKIE_SECURE` 改由獨立環境變數控制，不再依賴 `NODE_ENV`。
+- **Pinia auth store**（`src/stores/auth.ts`）：取代 `useAuth.ts` composable；含 `_refreshPromise` 去重鎖，防止多 tab 並發觸發多次 refresh。
+- **CSS 設計系統**：建立 Primary Teal / Secondary Blue 色彩 CSS 變數；命名規範統一（`--text`→`--font-color`、`--bg`→`--bg-color`、`--border`→`--border-color` 等）；導入 Google Fonts（Sigmar / Nunito / Noto Sans TC）。
+- **三態 UI**：HomeView 歷史區塊由兩態（loading / list）擴展為四態（skeleton → error+重試按鈕 → 引導畫面 → 列表）；MemberView 登出加入 `isLoggingOut` loading 狀態。
+
+---
+
 ## [0.5.0] - 2026-05-16
 
 ### Added

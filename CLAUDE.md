@@ -34,6 +34,7 @@ JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 COOKIE_SECURE=false          # production 改 true
 FRONTEND_URL=http://localhost:5173
+ANTHROPIC_API_KEY=<key>      # 必填，AI 食物分類服務依賴
 ```
 
 ## 架構
@@ -41,7 +42,7 @@ FRONTEND_URL=http://localhost:5173
 ### 雙服務架構
 
 - **前端** (`src/`): Vite dev server，純靜態，透過 `/api/*` 呼叫後端
-- **後端** (`server/`): Express，`POST /api/meals` 為核心端點，處理 AI 分類 → 評分 → 寫入資料庫
+- **後端** (`server/`): Express，`POST /api/meals` 為核心端點，處理 AI 分類 → 評分 → 寫入資料庫（速率限制：10 req/min）
 
 ### 評分演算法（核心邏輯）
 
@@ -71,7 +72,18 @@ SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodTy
 
 - `fetchWithAuth` (`src/utils/fetchWithAuth.ts`) — 所有需登入的 API 請求一律用此工具；自動處理 401 → refresh → retry，refresh 失敗則跳 `/login`
 - `authStore._refreshPromise` — 去重鎖，防止並發多次 refresh
+- Refresh token 採旋轉策略（每次 refresh 同時換發新 refresh token，舊的失效）
 - `POST /api/meals` **無需登入**：以 `email` 欄位 upsert user；`GET /api/meals/:userId` 才需 Bearer token
+
+**Auth API 端點**（`/api/auth/*`）：
+
+| 方法 | 路徑 | 登入需求 | 說明 |
+|------|------|----------|------|
+| POST | `/register` | 否 | 建立帳號（email + password + name） |
+| POST | `/login` | 否 | 回傳 accessToken；refresh token 存 httpOnly cookie |
+| POST | `/refresh` | Cookie | 換發新 access + refresh token |
+| POST | `/logout` | Bearer | 清除 DB 中 refresh token 及 cookie |
+| GET  | `/me` | Bearer | 回傳目前使用者資訊 |
 
 ### 前端 Composables
 

@@ -8,6 +8,8 @@ import {
   verifyRefreshToken,
 } from "../services/authService";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { validate } from "../middleware/validate";
+import { RegisterSchema, LoginSchema } from "../schemas/auth.schemas";
 
 const router = Router();
 
@@ -20,12 +22,8 @@ const REFRESH_COOKIE_OPTIONS = {
 };
 
 // POST /api/auth/register
-router.post("/register", async (req, res) => {
+router.post("/register", validate(RegisterSchema), async (req, res) => {
   const { email, password, name } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: "email 與 password 為必填" });
-  }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -42,12 +40,8 @@ router.post("/register", async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post("/login", async (req, res) => {
+router.post("/login", validate(LoginSchema), async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: "email 與 password 為必填" });
-  }
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.password) {

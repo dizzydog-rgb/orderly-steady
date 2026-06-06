@@ -19,7 +19,7 @@ function closeMenu() {
     </router-link>
 
     <div class="nav-actions">
-      <router-link to="/why" class="nav-link">為什麼控糖？</router-link>
+      <router-link to="/why" class="nav-link">控糖科學</router-link>
       <ThemeSwitcher />
       <router-link v-if="authStore.isLoggedIn" to="/member" class="user-icon" title="會員">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -39,7 +39,7 @@ function closeMenu() {
 
     <div v-if="menuOpen" class="mobile-menu">
       <router-link to="/" class="mobile-link" @click="closeMenu">首頁</router-link>
-      <router-link to="/why" class="mobile-link" @click="closeMenu">為什麼控糖？</router-link>
+      <router-link to="/why" class="mobile-link" @click="closeMenu">控糖科學</router-link>
       <router-link v-if="authStore.isLoggedIn" to="/member" class="mobile-link" @click="closeMenu">我的會員</router-link>
     </div>
   </nav>

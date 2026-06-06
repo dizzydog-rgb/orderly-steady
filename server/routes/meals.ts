@@ -6,6 +6,8 @@ import { getFoodType } from "../services/ai";
 import { calculateMealScore } from "../services/scoringAlgorithm";
 import type { IScoringResult } from "../services/scoringAlgorithm";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { validate } from "../middleware/validate";
+import { CreateMealSchema } from "../schemas/meals.schemas";
 
 const router = Router();
 
@@ -18,13 +20,9 @@ const mealsRateLimit = rateLimit({
 });
 
 // POST /api/meals
-router.post("/", mealsRateLimit, async (req, res) => {
+router.post("/", mealsRateLimit, validate(CreateMealSchema), async (req, res) => {
   try {
     const { email, foods } = req.body;
-
-    if (!email || !Array.isArray(foods) || foods.length === 0 || foods.length > 3) {
-      return res.status(400).json({ error: "email 為必填，foods 需為 1–3 項的陣列" });
-    }
 
     // 1. 取得或建立使用者
     const user = await prisma.user.upsert({
