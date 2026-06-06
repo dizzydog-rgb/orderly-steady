@@ -1,58 +1,210 @@
 # Architecture
 
-本文件描述「Orderly & Steady」的架構設計、目錄結構與核心演算法邏輯。
+本文件描述「Orderly & Steady」的架構設計、目錄結構、資料流與核心演算法邏輯。
 
 ## 1. 系統概述
-本專案是一個全端控糖管理系統。
-- **前端**: Vue 3 + TypeScript，負責資料記錄、評分計算、動態視覺回饋與飲食建議展示。
-- **後端**: Node.js (Express) + Prisma，負責提供 API 接口與處理資料持久化。
-- **核心價值**: 提供即時的「進食順序評分」與「智慧建議」，引導使用者建立良好的飲食習慣。
+
+本專案是一個全端控糖管理系統，採雙服務架構：
+
+- **前端**（`src/`）：Vue 3 + TypeScript，Vite dev server，透過 `/api/*` proxy 呼叫後端；負責即時評分計算、動態視覺回饋與資料展示。
+- **後端**（`server/`）：Node.js (Express 5) + Prisma (MySQL)；負責 AI 食物分類、最終評分計算、資料持久化與 JWT 驗證。
+- **核心價值**：以「進食順序」為依據的 all_pair 加權矩陣評分，搭配 AI 分類與趨勢視覺化，引導使用者建立良好的飲食習慣。
+
+---
 
 ## 2. 目錄結構
-依據專案現況與擴展性預期，目錄結構定義如下：
 
-- `src/` - 前端代碼
-  - `composables/` - 封裝 Vue Composition API 邏輯（如 `useGlucoseScore.ts`）。
-  - `services/` - 核心業務邏輯與演算法。
-    - `scoringAlgorithm.ts` - 進食順序評分演算法核心（含 Tips 生成邏輯）。
-  - `types/` - TypeScript 介面與型別定義。
-  - `App.vue` - 根組件（含 GSAP 動畫邏輯）。
-- `server/` - 後端代碼
-  - `routes/` - API 路由定義。
-  - `services/` - 後端業務邏輯（如 AI 串接、評分同步）。
-- `prisma/` - 資料庫 Schema 與遷移文件。
-- `docker-compose.yml` - 資料庫容器化配置。
+```
+orderly-steady/
+├── src/                        # 前端
+│   ├── router/index.ts         # Vue Router + beforeEach guard（未登入自動 refresh，失敗跳 /login）
+│   ├── stores/
+│   │   ├── auth.ts             # Pinia auth store（user / accessToken / _refreshPromise 去重鎖）
+│   │   └── history.ts          # Pinia history store（hasFetched / prependRecord 樂觀更新）
+│   ├── composables/
+│   │   ├── useGlucoseScore.ts  # HomeView 核心：mealSequence（最多 3 項）、scoreResult computed
+│   │   ├── useTheme.ts         # System / Light / Dark 三態，matchMedia 追蹤 OS 偏好
+│   │   └── useLang.ts          # CN / EN 語言切換
+│   ├── components/
+│   │   ├── NavBar.vue          # 品牌 logo、導覽連結、≤480px 漢堡選單
+│   │   ├── ScoreTrendChart.vue # Chart.js 折線圖 + backgroundBandsPlugin 分數色帶
+│   │   ├── ThemeSwitcher.vue   # 三態膠囊控件（含滑動指示器動畫）
+│   │   └── LangSwitcher.vue    # 語言切換按鈕組
+│   ├── utils/fetchWithAuth.ts  # 統一 API 入口；401 → refresh → retry，失敗跳 /login
+│   ├── services/
+│   │   └── scoringAlgorithm.ts # 前端即時評分（與 server/ 保持同步）
+│   ├── types/index.ts          # 所有共用介面（IMealItem / IScoringResult / IMealRecord…）
+│   └── views/
+│       ├── HomeView.vue        # 三格輸入 + 評分結果 + 趨勢圖 + 歷史列表
+│       ├── LoginView.vue       # 登入 / 註冊雙 tab
+│       ├── MemberView.vue      # 會員資訊 + 登出
+│       └── WhyView.vue         # 控糖科學衛教文章（公開頁面，支援 CN/EN）
+├── server/                     # 後端
+│   ├── index.ts                # Express 入口（CORS / cookieParser / routes）
+│   ├── routes/
+│   │   ├── auth.ts             # register / login / refresh / logout / me
+│   │   ├── meals.ts            # POST /api/meals（rate limit 10/min）、GET /api/meals/:userId
+│   │   └── foodDictionary.ts   # DELETE /api/food-dictionary（全清 / 單筆）
+│   ├── services/
+│   │   ├── ai.ts               # Claude Haiku 分類 + FoodDictionary DB 快取
+│   │   ├── scoringAlgorithm.ts # 後端評分（寫入 DB 前最終計算）
+│   │   └── authService.ts      # JWT 產生與驗證、bcrypt
+│   ├── middleware/
+│   │   └── authMiddleware.ts   # Bearer token 驗證，注入 req.user
+│   └── scripts/
+│       └── clearFoodDictionary.ts
+├── prisma/
+│   ├── schema.prisma
+│   └── seed.ts                 # 50 筆常見食物預設分類
+└── docker-compose.yml
+```
 
-## 3. 進食順序評分演算法 (Meal Order Scoring Algorithm)
+---
 
-### 3.1 設計概念
-血糖控制的關鍵在於延緩碳水化合物的吸收速度。研究顯示，先攝取膳食纖維（蔬菜）與蛋白質，能在腸胃形成緩衝，有效平抑餐後血糖波動。
+## 3. 資料模型（Prisma Schema）
 
-### 3.2 評分規則與權重
-演算法將食物分為四大類，並根據其在進食序列中的位置給予加權或扣分：
+```
+User
+  id            String       @id @default(cuid())
+  email         String       @unique
+  name          String?
+  password      String?      (bcrypt hash)
+  refreshToken  String?      @db.Text
+  mealRecords   MealRecord[]
 
-| 食物分類 | 代碼 | 理想順序 | 權重 (Base Score) |
-| :--- | :--- | :--- | :--- |
-| 膳食纖維 (Fiber) | `F` | 1 | 40 |
-| 蛋白質 (Protein) | `P` | 2 | 30 |
-| 複合碳水 (Complex Carb) | `CC` | 3 | 20 |
-| 精緻碳水/精緻碳水 (Simple Carb) | `SC` | 4 | 10 |
+MealRecord
+  id            String       @id @default(cuid())
+  userId        String
+  totalScore    Float
+  tips          Json         (string[])
+  recordedAt    DateTime     @default(now())
+  foodItems     FoodItem[]
+  @@index([userId, recordedAt])
 
-### 3.3 智慧建議邏輯 (Health Tips Logic)
-系統除了計算分數外，還會根據序列特徵產生即時建議：
-- **缺失纖維**: 若序列中無 `F`，提示加入纖維以平穩血糖。
-- **順序錯誤**: 若 `F` 出現位置非首位，提示嘗試將蔬菜放在第一口。
-- **碳水過早**: 若在攝取纖維前即攝取碳水，警告血糖可能波動較大。
-- **精緻碳水警示**: 若首位為 `SC`，發出強烈預警。
+FoodItem
+  id             String
+  mealRecordId   String
+  label          String
+  type           FoodType     (enum)
+  sequenceIndex  Int
+  finalScore     Float
+  @@index([mealRecordId])
 
-## 4. 資料流
-1. **輸入層**: 使用者透過 UI 選擇食物與進食順序。
-2. **處理層**: `useGlucoseScore` composable 呼叫 `scoringAlgorithm.ts` 進行即時計算。
-3. **表現層**: 
-   - 透過 GSAP 呈現數值滾動動畫。
-   - 顯示百分制分數、視覺化顏色提醒（綠/黃/紅）與智慧建議提示框。
-4. **持久層**: (開發中) 前端透過 API 將紀錄傳送至 Express 後端並儲存至 MySQL。
+FoodDictionary
+  id    String   @id @default(cuid())
+  label String   @unique   ← AI 分類快取，命中直接回傳
+  type  FoodType
 
-## 5. 擴展考慮
-- **AI 分類**: 整合 LLM API 以自動識別使用者輸入的具體食物名稱並對應至分類。
-- **歷史趨勢**: 透過 Chart.js 展示長期得分趨勢。
+FoodType enum: FIBER | PROTEIN | COMPLEX_CARB | SIMPLE_CARB | OTHER
+```
+
+---
+
+## 4. 核心演算法：all_pair 加權矩陣
+
+演算法同時存在於前後端，**兩份必須保持同步**：
+- `src/services/scoringAlgorithm.ts` — 前端即時計算（使用者操作時）
+- `server/services/scoringAlgorithm.ts` — 後端寫入 DB 前最終計算
+
+### 4.1 三分支決策樹
+
+| 分支 | 條件 | 結果 |
+|------|------|------|
+| m=0 | 所有食物均為 OTHER | `totalScore: null`，不寫入 DB |
+| m=1 | 僅 1 項可評分食物 | SIMPLE_CARB → 20 分；其餘 → 60 分 |
+| m≥2 | 2–3 項可評分食物 | all_pair 加權矩陣計算 |
+
+### 4.2 SCORE_MATRIX（m≥2 時使用）
+
+前者食物 → 後者食物，數值 0–10（越高越好）：
+
+| 前 \ 後 | F | P | CC | SC |
+|---------|---|---|----|----|
+| **F**   | 5 | 10| 8  | 8  |
+| **P**   | 8 | 5 | 7  | 9  |
+| **CC**  | 5 | 5 | 5  | 3  |
+| **SC**  | 1 | 1 | 1  | 0  |
+
+- 前端使用 FoodType value（`'F'`/`'P'`/`'CC'`/`'SC'`）
+- 後端使用 Prisma enum 名稱（`FIBER`/`PROTEIN`/`COMPLEX_CARB`/`SIMPLE_CARB`）
+
+### 4.3 距離加權與懲罰
+
+- **相鄰 pair**（j = i+1）：乘 ×1.5
+- **跨越 pair**（j > i+1）：乘 ×1.0
+- **SIMPLE_CARB 首位懲罰**：index=0 → -30 分；index=1 → -10 分
+
+---
+
+## 5. Auth 架構
+
+**JWT 雙令牌**：
+
+| Token | 有效期 | 存放位置 |
+|-------|--------|----------|
+| Access Token | 15m | Pinia 記憶體（`authStore.accessToken`） |
+| Refresh Token | 7d | httpOnly cookie（`sameSite=strict`） |
+
+- **Token 輪換**：每次 `/api/auth/refresh` 同時換發新 Refresh Token，舊的 DB 記錄立即失效。
+- **`fetchWithAuth`**：所有需登入的請求統一走此工具；自動附加 Bearer header，401 時觸發 refresh → retry；refresh 失敗則清除狀態並跳 `/login`。
+- **`_refreshPromise`**：去重鎖，防止多個並發請求同時觸發 refresh。
+- **`POST /api/meals` 無需登入**：以 `email` 欄位 upsert user，允許未登入訪客快速試用。
+
+---
+
+## 6. AI 食物分類流程
+
+```
+使用者輸入食物名稱
+       ↓
+FoodDictionary DB 查詢（label 唯一索引）
+       ↓
+  命中快取？
+  ├─ YES → 直接回傳 type（log: [AI] Cache hit）
+  └─ NO  → 呼叫 Claude Haiku API
+              ↓
+           regex 解析回傳值
+              ↓
+           寫入 FoodDictionary
+              ↓
+           回傳 type
+```
+
+模型：`claude-haiku-4-5-20251001`，`max_tokens: 20`，system prompt 要求只回傳 5 個英文代號之一。
+
+---
+
+## 7. 前端資料流
+
+```
+使用者輸入食物
+       ↓
+useGlucoseScore（mealSequence ref）
+       ↓
+computed scoreResult → calculateMealScore()  ← 即時分數
+       ↓
+HomeView 送出
+       ↓
+fetchWithAuth POST /api/meals
+       ↓
+後端：AI 分類 → calculateMealScore() → Prisma create
+       ↓
+回傳 { record, analysis }
+       ↓
+historyStore.prependRecord(record)  ← 樂觀更新
+       ↓
+ScoreTrendChart 自動更新（computed from store.records）
+```
+
+---
+
+## 8. 路由與頁面守衛
+
+| 路由 | 元件 | 存取權限 |
+|------|------|----------|
+| `/login` | LoginView | 公開；已登入自動跳 `/` |
+| `/why` | WhyView | 公開 |
+| `/` | HomeView | 需登入 |
+| `/member` | MemberView | 需登入 |
+
+`beforeEach` guard：非公開路由 → 若無 accessToken 先嘗試 refresh → 失敗則跳 `/login`。

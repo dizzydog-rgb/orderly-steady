@@ -7,7 +7,7 @@ export function validate<T extends z.ZodTypeAny>(schema: T) {
     if (!result.success) {
       res.status(400).json({
         error: '請求格式錯誤',
-        details: result.error.errors.map(e => ({
+        details: result.error.issues.map(e => ({
           field: e.path.join('.'),
           message: e.message,
         })),

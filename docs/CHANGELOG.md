@@ -2,6 +2,27 @@
 
 所有對「Orderly & Steady」專案的重要變更都將記錄在此文件中。
 
+## [0.9.2] - 2026-06-06
+
+### Added
+- **Vitest 後端測試套件**：新增 `server/__tests__/` 目錄，涵蓋 middleware、service、routes 三層共 24 個新測試案例，合計 47/47 通過。
+  - `authMiddleware.spec.ts`：無 header / header 格式錯 / 有效 token / 過期 token 四個分支
+  - `validate.spec.ts`：RegisterSchema / CreateMealSchema 合法與非法邊界，確認 `details[].field` 準確回報
+  - `scoringAlgorithm.spec.ts`（後端版）：m=0/1/≥2 三分支決策樹 + tips 文字觸發條件
+  - `routes/auth.spec.ts`：以 supertest + `vi.mock` Prisma 測試 register（201/400/409）與 login（200/400/401）
+- **GitHub Actions CI**（`.github/workflows/ci.yml`）：push / PR 至 master 自動執行 `npm ci → npm test → npm run build`；CI job 名稱 `Test & Build` 可設為 PR required status check。
+- **`server/app.ts`**：從 `server/index.ts` 拆出 Express app 建立邏輯並 export，讓測試可直接 import app 而不觸發 `listen`。
+- **`npm run test:coverage`** script：以 `@vitest/coverage-v8` 產生文字與 HTML 覆蓋率報告。
+
+### Changed
+- **`server/index.ts`**：簡化為僅 import app 與呼叫 `app.listen()`，dotenv 仍在此初始化。
+- **`vite.config.ts`**：test 區塊加入 `coverage: { provider: 'v8', reporter: ['text', 'html'] }`。
+
+### Fixed
+- **`server/middleware/validate.ts`**：`result.error.errors` 改為 `result.error.issues`（Zod v4 breaking change，舊屬性名稱在 v4 已移除）。
+
+---
+
 ## [0.9.1] - 2026-06-06
 
 ### Added

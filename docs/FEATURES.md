@@ -5,17 +5,17 @@
 ## 1. 核心功能：進食順序評分 (Meal Order Scoring)
 
 ### 1.1 記錄進食序列
-- **行為描述**: 使用者可以依序點選「植物纖維」、「優質蛋白質」、「複合碳水」、「精緻碳水」標籤，建立當前餐點的進食順序。
+- **行為描述**: 使用者依序在三個文字輸入欄（第一口 / 第二口 / 第三口）輸入食物名稱；第二欄在第一欄有值後才解鎖，第三欄同理，強制引導思考進食順序。清空前一欄時後續欄位自動清除。
 - **狀態**: 🟢 已完成
 
 ### 1.2 即時分數計算與動態動畫
 - **行為描述**: 在使用者點選標籤時，系統即時更新總分。透過 GSAP 實作差異化動畫，使變化過程更加平滑自然。
-- **視覺回饋**:
-  - **≥80**: 綠色 — 彈跳綠光動畫（優良，血糖平穩）
-  - **60–79**: 黃色 — 淡入黃示（尚可，有改善空間）
-  - **40–59**: 橘色 — 震動黃綠動畫（需注意）
-  - **20–39**: 橘紅 — 震動橘色警告
-  - **<20**: 深紅 — 強烈震動紅色嚴重警報
+- **視覺回饋**（顏色 4 段、動畫 5 段）:
+  - **≥80**: 綠色（`--score-high`）— 彈跳縮放動畫 ×3（優良，血糖平穩）
+  - **60–79**: 黃色（`--score-medium`）— 淡入動畫（尚可，有改善空間）
+  - **40–59**: 橘色（`--score-low`）— 小幅震動 ×5（需注意）
+  - **20–39**: 深紅（`--score-critical`）— 中幅震動 ×7（警告）
+  - **<20**: 深紅（`--score-critical`，同上色）— 強烈震動 ×10（嚴重警報）
 - **狀態**: 🟢 已完成
 
 ### 1.3 智慧飲食建議 (Health Tips)
@@ -28,10 +28,11 @@
   - 🟢 基礎架構建立
   - 🟢 Docker 容器化資料庫
   - 🟢 Prisma Schema 設計與 Migration（User、MealRecord、FoodItem、FoodDictionary）
-  - 🟢 `POST /api/meals` — 建立飲食紀錄（含 email upsert、AI 分類、評分計算、寫入 DB）
-  - 🟢 `GET /api/meals/:userId` — 查詢使用者歷史紀錄（依時間倒序，含 foodItems）
+  - 🟢 `POST /api/meals` — 建立飲食紀錄（含 email upsert、AI 分類、評分計算、寫入 DB；rate limit 10 req/min）
+  - 🟢 `GET /api/meals/:userId` — 查詢使用者歷史紀錄（依時間倒序，含 foodItems；需 Bearer Token 且只能查詢自己）
   - 🟢 FoodDictionary 快取機制（AI 分類結果快取至 DB，避免重複呼叫）
   - 🟢 食物資料庫初始化（50 筆常見食物預設分類）
+  - 🟢 **Zod Schema 驗證**：`server/middleware/validate.ts` 通用 middleware；`server/schemas/` 定義 RegisterSchema、LoginSchema、CreateMealSchema；格式錯誤回傳結構化 `{ error, details }` 400 回應
 - **狀態**: 🟢 已完成
 
 ## 2.1 評分演算法（all_pair 加權矩陣）
