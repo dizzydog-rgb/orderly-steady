@@ -5,6 +5,7 @@ import prisma from "../db";
 import { getFoodType } from "../services/ai";
 import { calculateMealScore } from "../services/scoringAlgorithm";
 import type { IScoringResult } from "../services/scoringAlgorithm";
+import { authMiddleware } from "../middleware/authMiddleware";
 
 const router = Router();
 
@@ -83,9 +84,13 @@ router.post("/", mealsRateLimit, async (req, res) => {
 });
 
 // GET /api/meals/:userId
-router.get("/:userId", async (req, res) => {
+router.get("/:userId", authMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
+
+    if (req.user!.userId !== userId) {
+      return res.status(403).json({ error: "無權存取此資源" });
+    }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {

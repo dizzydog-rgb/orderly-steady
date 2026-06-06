@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import type { IUser } from '../types';
+import { useHistoryStore } from './history';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -82,6 +83,7 @@ export const useAuthStore = defineStore('auth', {
     async logout(): Promise<void> {
       const token = this.accessToken;
       this._clearState();
+      useHistoryStore().reset();
 
       if (token) {
         await fetch('/api/auth/logout', {

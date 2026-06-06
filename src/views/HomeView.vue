@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import gsap from 'gsap';
 import { useAuthStore } from '../stores/auth';
-import { useHistory } from '../composables/useHistory';
+import { useHistoryStore } from '../stores/history';
 import { fetchWithAuth } from '../utils/fetchWithAuth';
 import type { IMealRecord, IScoringResult } from '../types';
+import ScoreTrendChart from '../components/ScoreTrendChart.vue';
 
 const authStore = useAuthStore();
-const { records, isLoading, error, fetchHistory, prependRecord } = useHistory();
+const historyStore = useHistoryStore();
+const { records, isLoading, error } = storeToRefs(historyStore);
+const { fetchHistory, prependRecord } = historyStore;
 
 const slot1 = ref('');
 const slot2 = ref('');
@@ -180,6 +184,16 @@ function foodTypeLabel(type: string | null): string {
     <section class="history-section">
       <h3>過往進食紀錄</h3>
 
+      <!-- 趨勢圖 -->
+      <div v-if="isLoading" class="chart-skeleton skeleton"></div>
+      <ScoreTrendChart
+        v-else-if="!error && records.length >= 2"
+        :records="records"
+      />
+      <p v-else-if="!error && records.length === 1" class="chart-hint">
+        紀錄累積中，再多記錄 1 餐即可顯示趨勢圖
+      </p>
+
       <div v-if="isLoading" class="skeleton-list">
         <div class="skeleton" v-for="i in 3" :key="i"></div>
       </div>
@@ -212,7 +226,8 @@ function foodTypeLabel(type: string | null): string {
 
 <style scoped>
 .home-page {
-  max-width: 600px;
+  width: 100%;
+  max-width: 480px;
   margin: 0 auto;
   padding: 32px 20px 60px;
   display: flex;
@@ -222,7 +237,14 @@ function foodTypeLabel(type: string | null): string {
 
 h2, h3 { margin: 0 0 16px; }
 
-.input-section { display: flex; flex-direction: column; gap: 16px; }
+.input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+}
 
 .slots { display: flex; flex-direction: column; gap: 12px; }
 
@@ -331,9 +353,22 @@ h2, h3 { margin: 0 0 16px; }
 
 .tips h4 { margin: 0 0 8px; color: var(--score-medium); font-size: var(--f16); }
 .tips ul { margin: 0; padding-left: 18px; }
-.tips li { font-size: var(--f16); color: var(--score-medium); margin-bottom: 4px; }
+.tips li { font-size: var(--f16); color: var(--score-medium); margin-bottom: 4px; text-align: left; }
 
-.history-section { display: flex; flex-direction: column; }
+.history-section { display: flex; flex-direction: column; gap: 16px; }
+
+.chart-skeleton {
+  height: 220px;
+  border-radius: 10px;
+}
+
+.chart-hint {
+  font-size: var(--f14);
+  color: var(--font-color);
+  text-align: center;
+  margin: 0;
+  padding: 12px 0;
+}
 
 .skeleton-list { display: flex; flex-direction: column; gap: 10px; }
 .skeleton {

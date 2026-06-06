@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import mealRoutes from "./routes/meals";
 import authRoutes from "./routes/auth";
+import foodDictionaryRoutes from "./routes/foodDictionary";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/meals", mealRoutes);
+app.use("/api/food-dictionary", foodDictionaryRoutes);
 
 // Health check
 app.get("/health", (req, res) => {

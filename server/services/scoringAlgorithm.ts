@@ -40,7 +40,7 @@ const TYPE_LABELS: Record<string, string> = {
   [FoodType.SIMPLE_CARB]: '精緻糖',
 };
 
-function buildTips(scorable: FoodType[], penalty: number): string[] {
+function buildTips(scorable: FoodType[], penalty: number, totalScore: number): string[] {
   const tips: string[] = [];
 
   if (scorable[0] !== FoodType.FIBER) {
@@ -52,7 +52,7 @@ function buildTips(scorable: FoodType[], penalty: number): string[] {
   if (scorable.length >= 2 && scorable[0] === FoodType.FIBER && scorable[1] !== FoodType.PROTEIN) {
     tips.push('纖維之後搭配蛋白質，控糖效果更佳。');
   }
-  if (penalty === 0 && scorable.length >= 2) {
+  if (penalty === 0 && scorable.length >= 2 && totalScore >= 80) {
     tips.push('進食順序完美！持續保持這樣的飲食習慣。');
   }
 
@@ -138,6 +138,6 @@ export function calculateMealScore(sequence: FoodType[]): IScoringResult {
     totalScore,
     scorableCount: m,
     breakdown,
-    tips: buildTips(scorable, penalty),
+    tips: buildTips(scorable, penalty, totalScore),
   };
 }

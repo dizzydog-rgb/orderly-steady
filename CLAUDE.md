@@ -14,14 +14,27 @@ Orderly & Steady — 結合 AI 分類邏輯的控糖管理系統，使用者紀�
 
 ```bash
 npm run dev            # 啟動前端 Vite 開發伺服器
-npm run dev:server     # 啟動後端 Express 伺服器（port 3000，tsx watch 熱重載）
+npm run dev:server     # 啟動後端 Express 伺服器（port 3100，tsx watch 熱重載）
 docker-compose up -d   # 啟動 MySQL 容器（後端依賴，須先啟動）
 npm run build          # 型別檢查 + 打包前端
 npm run test           # 執行所有 Vitest 單元測試
 npx vitest run src/services/__tests__/scoringAlgorithm.spec.ts  # 執行單一測試檔
 ```
 
-前後端為獨立程序，完整開發須同時啟動 `dev` 與 `dev:server`。後端需 `.env` 中的 `DATABASE_URL`（MySQL 連線字串）。
+前後端為獨立程序，完整開發須同時啟動 `dev` 與 `dev:server`。後端監聽 **port 3100**（Vite proxy 目標），`server/index.ts` 預設 3000，須在 `.env` 設 `PORT=3100`。
+
+### 必要 `.env` 變數
+
+```
+DATABASE_URL=mysql://...
+PORT=3100
+JWT_SECRET=<secret>
+JWT_REFRESH_SECRET=<secret>
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+COOKIE_SECURE=false          # production 改 true
+FRONTEND_URL=http://localhost:5173
+```
 
 ## 架構
 
@@ -52,10 +65,32 @@ SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodTy
 | **CC**  | 5 | 5 | 5  | 3  |
 | **SC**  | 1 | 1 | 1  | 0  |
 
+### Auth 架構
+
+**JWT 雙令牌**：access token（15m，存 Pinia 記憶體）+ refresh token（7d，httpOnly cookie）。
+
+- `fetchWithAuth` (`src/utils/fetchWithAuth.ts`) — 所有需登入的 API 請求一律用此工具；自動處理 401 → refresh → retry，refresh 失敗則跳 `/login`
+- `authStore._refreshPromise` — 去重鎖，防止並發多次 refresh
+- `POST /api/meals` **無需登入**：以 `email` 欄位 upsert user；`GET /api/meals/:userId` 才需 Bearer token
+
+### 前端 Composables
+
+- `useGlucoseScore` (`src/composables/useGlucoseScore.ts`) — HomeView 核心：管理 `mealSequence`（最多 3 項），computed `scoreResult` 即時呼叫 `calculateMealScore`，`scoreColor` 依分數區間回傳顏色
+- `useTheme` / `useLang` — 全域主題與語言切換，不涉及評分邏輯
+
+### 歷史紀錄 Store
+
+`src/stores/history.ts`：`hasFetched` 旗標防止重複請求；新增餐點後呼叫 `prependRecord(record)` 做樂觀 UI 更新，不重新拉取。
+
+### ScoreTrendChart 組件
+
+`src/components/ScoreTrendChart.vue`：接收 `records: IMealRecord[]`，支援 7/14/30/90/180 天範圍切換（GSAP fade 過場），使用自訂 `backgroundBandsPlugin` 在 Chart.js canvas 上繪製分數區間色帶（≥80 綠、60–80 黃、40–60 橘、20–40 紅淡、<20 深紅）。需 ≥2 筆才渲染折線圖。
+
 ### AI 分類與快取
 
-`server/services/ai.ts` 目前使用**關鍵字規則**（`mockAIClassify`）模擬 LLM 分類，尚未串接真實 API。
-分類結果寫入 `FoodDictionary` 資料表作為快取（label 唯一索引）；下次相同食物名稱直接從 DB 讀取，跳過 AI 呼叫。
+`server/services/ai.ts` 串接 **Claude Haiku API**（`claude-haiku-4-5-20251001`）進行食物分類，回傳 FIBER / PROTEIN / COMPLEX_CARB / SIMPLE_CARB / OTHER 之一。
+分類結果寫入 `FoodDictionary` 資料表作為快取（label 唯一索引）；下次相同食物名稱直接從 DB 讀取，跳過 AI 呼叫（log 顯示 `[AI] Cache hit`）。
+`DATABASE_URL` 須含 `?charset=utf8mb4` 確保中文 label 正確儲存。管理端點 `DELETE /api/food-dictionary`（全清）與 `DELETE /api/food-dictionary/:label`（單筆）可清除錯誤快取，均需 Bearer token。
 
 ### 資料模型（Prisma）
 
