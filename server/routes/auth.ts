@@ -13,11 +13,13 @@ import { RegisterSchema, LoginSchema } from "../schemas/auth.schemas";
 
 const router = Router();
 
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.COOKIE_SECURE === "true",
   sameSite: "strict" as const,
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  maxAge: REFRESH_TOKEN_TTL_MS,
   path: "/api/auth",
 };
 
@@ -26,8 +28,19 @@ router.post("/register", validate(RegisterSchema), async (req, res) => {
   const { email, password, name } = req.body;
 
   const existing = await prisma.user.findUnique({ where: { email } });
+
   if (existing) {
-    return res.status(409).json({ error: "此 Email 已被註冊" });
+    if (existing.password !== null) {
+      return res.status(409).json({ error: "此 Email 已被註冊" });
+    }
+    // meals endpoint 自動建立的帳號（password=null）→ 補全密碼完成註冊
+    const hashed = await hashPassword(password);
+    const user = await prisma.user.update({
+      where: { email },
+      data: { password: hashed, name: name ?? existing.name ?? null },
+      select: { id: true, email: true, name: true },
+    });
+    return res.status(201).json({ message: "註冊成功", user });
   }
 
   const hashed = await hashPassword(password);
@@ -56,9 +69,12 @@ router.post("/login", validate(LoginSchema), async (req, res) => {
   const accessToken = generateAccessToken({ userId: user.id, email: user.email });
   const refreshToken = generateRefreshToken({ userId: user.id });
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { refreshToken },
+  await prisma.refreshToken.create({
+    data: {
+      token: refreshToken,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+    },
   });
 
   res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
@@ -79,17 +95,27 @@ router.post("/refresh", async (req, res) => {
   try {
     const { userId } = verifyRefreshToken(refreshToken);
 
+    const stored = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
+    if (!stored || stored.userId !== userId || stored.expiresAt < new Date()) {
+      return res.status(401).json({ error: "無效或已過期的 Refresh Token" });
+    }
+
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!user) {
       return res.status(401).json({ error: "無效或已過期的 Refresh Token" });
     }
 
     const newAccessToken = generateAccessToken({ userId: user.id, email: user.email });
     const newRefreshToken = generateRefreshToken({ userId: user.id });
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { refreshToken: newRefreshToken },
+    // 旋轉策略：刪舊建新
+    await prisma.refreshToken.delete({ where: { token: refreshToken } });
+    await prisma.refreshToken.create({
+      data: {
+        token: newRefreshToken,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+      },
     });
 
     res.cookie("refreshToken", newRefreshToken, REFRESH_COOKIE_OPTIONS);
@@ -101,10 +127,10 @@ router.post("/refresh", async (req, res) => {
 
 // POST /api/auth/logout
 router.post("/logout", authMiddleware, async (req, res) => {
-  await prisma.user.update({
-    where: { id: req.user!.userId },
-    data: { refreshToken: null },
-  });
+  const refreshToken = req.cookies.refreshToken;
+  if (refreshToken) {
+    await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
+  }
   res.clearCookie("refreshToken", { path: "/api/auth" });
   return res.json({ message: "已登出" });
 });
