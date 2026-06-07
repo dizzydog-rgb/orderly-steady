@@ -29,17 +29,28 @@ enum FoodType {
 }
 
 model User {
-  id           String       @id @default(uuid())
-  email        String       @unique
-  name         String?
-  password     String?      // bcrypt hash；null = 舊有自動建立的使用者
-  refreshToken String?      @db.Text // JWT 字串較長，使用 TEXT 型別
-  records      MealRecord[]
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String?
+  password      String?        // bcrypt hash；null = 由 meals endpoint 自動建立、尚未完成註冊的帳號
+  records       MealRecord[]
+  refreshTokens RefreshToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique @db.VarChar(512)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model MealRecord {

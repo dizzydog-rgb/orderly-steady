@@ -9,6 +9,12 @@ vi.mock('../../db', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    refreshToken: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
   },
 }));
 
@@ -44,8 +50,12 @@ describe('POST /api/auth/register', () => {
     expect(res.body.user.email).toBe('new@example.com');
   });
 
-  it('409 — email already registered', async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'u1', email: 'dup@example.com' } as any);
+  it('409 — email already registered with password', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'u1',
+      email: 'dup@example.com',
+      password: 'hashed-password',
+    } as any);
 
     const res = await request(app)
       .post('/api/auth/register')
@@ -53,6 +63,30 @@ describe('POST /api/auth/register', () => {
 
     expect(res.status).toBe(409);
     expect(res.body).toHaveProperty('error');
+  });
+
+  it('201 — completes registration for meals-created account (password=null)', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'u1',
+      email: 'meal@example.com',
+      password: null,
+      name: null,
+    } as any);
+    vi.mocked(prisma.user.update).mockResolvedValue({
+      id: 'u1',
+      email: 'meal@example.com',
+      name: null,
+    } as any);
+
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'meal@example.com', password: 'password123' });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toHaveProperty('user');
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { email: 'meal@example.com' } })
+    );
   });
 
   it('400 — invalid email format', async () => {
@@ -85,7 +119,7 @@ describe('POST /api/auth/login', () => {
       name: null,
     } as any);
     vi.mocked(comparePassword).mockResolvedValue(true as never);
-    vi.mocked(prisma.user.update).mockResolvedValue({} as any);
+    vi.mocked(prisma.refreshToken.create).mockResolvedValue({} as any);
 
     const res = await request(app)
       .post('/api/auth/login')
@@ -93,6 +127,29 @@ describe('POST /api/auth/login', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('accessToken');
+    expect(prisma.refreshToken.create).toHaveBeenCalledOnce();
+  });
+
+  it('200 — second device login creates a second RefreshToken (multi-device)', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'u1',
+      email: 'user@example.com',
+      password: 'hashed-password',
+      name: null,
+    } as any);
+    vi.mocked(comparePassword).mockResolvedValue(true as never);
+    vi.mocked(prisma.refreshToken.create).mockResolvedValue({} as any);
+
+    await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'user@example.com', password: 'password123' });
+
+    await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'user@example.com', password: 'password123' });
+
+    // 兩次登入各自建立一筆 RefreshToken，不互相覆蓋
+    expect(prisma.refreshToken.create).toHaveBeenCalledTimes(2);
   });
 
   it('401 — user not found', async () => {

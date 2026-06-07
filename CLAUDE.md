@@ -55,16 +55,16 @@ ANTHROPIC_API_KEY=<key>      # 必填，AI 食物分類服務依賴
 
 - **m=0**（全為 OTHER）：`totalScore: null`，不寫入 DB
 - **m=1**（單一可評分食物）：SIMPLE_CARB → 20 分；其餘 → 60 分；tips 硬編碼均衡建議
-- **m≥2**：雙重迴圈所有 pair (i,j)，依距離加權（相鄰 ×1.5，跨越 ×1.0），查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB 首位懲罰 -30，index=1 懲罰 -10
+- **m≥2**：雙重迴圈所有 pair (i,j)，依距離加權（相鄰 ×1.5，跨越 ×1.0），查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB index=0 懲罰 -10，index=1 懲罰 -10
 
 SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodType value `'F'`/`'P'`/`'CC'`/`'SC'`）：
 
 | 前 \ 後 | F | P | CC | SC |
 |---------|---|---|----|----|
-| **F**   | 5 | 10| 8  | 8  |
-| **P**   | 8 | 5 | 7  | 9  |
+| **F**   | 5 | 10| 10 | 8  |
+| **P**   | 8 | 5 | 10 | 8  |
 | **CC**  | 5 | 5 | 5  | 3  |
-| **SC**  | 1 | 1 | 1  | 0  |
+| **SC**  | 6 | 6 | 4  | 0  |
 
 ### Auth 架構
 
@@ -73,7 +73,9 @@ SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodTy
 - `fetchWithAuth` (`src/utils/fetchWithAuth.ts`) — 所有需登入的 API 請求一律用此工具；自動處理 401 → refresh → retry，refresh 失敗則跳 `/login`
 - `authStore._refreshPromise` — 去重鎖，防止並發多次 refresh
 - Refresh token 採旋轉策略（每次 refresh 同時換發新 refresh token，舊的失效）
-- `POST /api/meals` **無需登入**：以 `email` 欄位 upsert user；`GET /api/meals/:userId` 才需 Bearer token
+- Refresh token 存於獨立的 `RefreshToken` 資料表（非 User 欄位），支援多裝置同時登入；logout 只撤銷當前裝置的 token
+- `POST /api/meals` **無需登入**：以 `email` 欄位 upsert user（password=null）；`GET /api/meals/:userId` 才需 Bearer token
+- `POST /api/auth/register`：若 email 已存在且 `password=null`（meals endpoint 自動建立的帳號），允許補全密碼完成註冊（回傳 201）；若 `password` 已設定則回傳 409
 
 **Auth API 端點**（`/api/auth/*`）：
 
@@ -107,7 +109,8 @@ SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodTy
 ### 資料模型（Prisma）
 
 `User` → `MealRecord`（含 totalScore、tips JSON）→ `FoodItem`（含 sequenceIndex）。
-`MealRecord` 有 `(userId, recordedAt)` 複合索引，`FoodItem` 有 `mealRecordId` 索引。
+`User` → `RefreshToken`（含 token、expiresAt），支援多裝置登入。
+`MealRecord` 有 `(userId, recordedAt)` 複合索引，`FoodItem` 有 `mealRecordId` 索引，`RefreshToken` 有 `token` unique 索引與 `userId` 索引。
 
 ## 關鍵規則
 
