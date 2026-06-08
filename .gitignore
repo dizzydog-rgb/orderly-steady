@@ -27,3 +27,9 @@ dist-ssr
 .claude/settings.local.json
 
 /src/generated/prisma
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
