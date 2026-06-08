@@ -12,7 +12,7 @@ router.delete("/", authMiddleware, async (req, res) => {
 
 // DELETE /api/food-dictionary/:label — 清除單筆快取
 router.delete("/:label", authMiddleware, async (req, res) => {
-  const { label } = req.params;
+  const label = req.params['label'] as string;
   const existing = await prisma.foodDictionary.findUnique({ where: { label } });
   if (!existing) {
     return res.status(404).json({ error: `找不到 "${label}" 的快取記錄` });

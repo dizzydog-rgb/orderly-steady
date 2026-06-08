@@ -17,8 +17,8 @@ const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.COOKIE_SECURE === "true",
-  sameSite: "strict" as const,
+  secure: true,
+  sameSite: "none" as const,
   maxAge: REFRESH_TOKEN_TTL_MS,
   path: "/api/auth",
 };
