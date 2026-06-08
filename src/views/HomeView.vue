@@ -5,6 +5,7 @@ import gsap from 'gsap';
 import { useAuthStore } from '../stores/auth';
 import { useHistoryStore } from '../stores/history';
 import { fetchWithAuth } from '../utils/fetchWithAuth';
+import { apiUrl } from '../utils/apiUrl';
 import type { IMealRecord, IScoringResult } from '../types';
 import ScoreTrendChart from '../components/ScoreTrendChart.vue';
 
@@ -78,7 +79,7 @@ async function handleSubmit() {
 
   isSubmitting.value = true;
   try {
-    const res = await fetchWithAuth('/api/meals', {
+    const res = await fetchWithAuth(apiUrl('/api/meals'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: authStore.user?.email, foods }),
