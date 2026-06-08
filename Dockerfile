@@ -7,7 +7,7 @@ COPY prisma ./prisma/
 
 RUN npm ci
 
-RUN npx prisma generate
+RUN DATABASE_URL="mysql://dummy:dummy@localhost:3306/dummy" npx prisma generate
 
 COPY server ./server/
 COPY tsconfig.server.json ./
