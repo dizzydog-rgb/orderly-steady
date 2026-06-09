@@ -49,7 +49,7 @@ async function handleSubmit() {
         </div>
         <div class="field">
           <label>密碼</label>
-          <input v-model="password" type="password" required placeholder="至少 6 個字元" autocomplete="current-password" />
+          <input v-model="password" type="password" required placeholder="至少 8 個字元" autocomplete="current-password" />
         </div>
         <div v-if="tab === 'register'" class="field">
           <label>名稱（選填）</label>

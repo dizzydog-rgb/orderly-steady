@@ -247,6 +247,8 @@ onUnmounted(() => ctx?.revert());
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .range-selector {
@@ -288,6 +290,8 @@ onUnmounted(() => ctx?.revert());
   display: flex;
   align-items: center;
   justify-content: center;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .chart-empty-hint {

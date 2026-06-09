@@ -39,7 +39,8 @@ export const useAuthStore = defineStore('auth', {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? '註冊失敗');
+        const msg = err.details?.[0]?.message ?? err.error ?? '註冊失敗';
+        throw new Error(msg);
       }
       await this.login(email, password);
     },
