@@ -233,6 +233,7 @@ function foodTypeLabel(type: string | null): string {
   display: flex;
   flex-direction: column;
   gap: 32px;
+  box-sizing: border-box;
 }
 
 h2, h3 { margin: 0 0 16px; }
