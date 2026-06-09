@@ -49,10 +49,10 @@
 
 ## 5. Tasks
 
-- [ ] 1. 修改 `src/stores/auth.ts` — `register()` 改讀 `err.details?.[0]?.message`
-- [ ] 2. 修改 `src/views/LoginView.vue` — 密碼 placeholder 改為「至少 8 個字元」
-- [ ] 3. 修改 `src/components/ScoreTrendChart.vue` — 圖表容器加入 `max-width: 100%; overflow: hidden`
-- [ ] 4. 手動驗證：測試錯誤訊息顯示 + 手機 RWD 圖表無橫向滾動
+- [x] 1. 修改 `src/stores/auth.ts` — `register()` 改讀 `err.details?.[0]?.message`
+- [x] 2. 修改 `src/views/LoginView.vue` — 密碼 placeholder 改為「至少 8 個字元」
+- [x] 3. 修改 `src/components/ScoreTrendChart.vue` — 圖表容器加入 `max-width: 100%; overflow: hidden`
+- [x] 4. 手動驗證：測試錯誤訊息顯示 + 手機 RWD 圖表無橫向滾動
 
 ## 6. 驗收結果
 
