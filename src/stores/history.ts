@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import type { IMealRecord } from '../types';
 import { fetchWithAuth } from '../utils/fetchWithAuth';
 import { useAuthStore } from './auth';
+import { apiUrl } from '../utils/apiUrl';
 
 export const useHistoryStore = defineStore('history', {
   state: () => ({
@@ -18,7 +19,7 @@ export const useHistoryStore = defineStore('history', {
       this.isLoading = true;
       this.error = null;
       try {
-        const res = await fetchWithAuth(`/api/meals/${authStore.user.id}`);
+        const res = await fetchWithAuth(apiUrl(`/api/meals/${authStore.user.id}`));
         if (res.ok) {
           const data = await res.json();
           this.records = data.records ?? [];

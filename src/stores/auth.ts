@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import type { IUser } from '../types';
 import { useHistoryStore } from './history';
+import { apiUrl } from '../utils/apiUrl';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -15,7 +16,7 @@ export const useAuthStore = defineStore('auth', {
   },
   actions: {
     async login(email: string, password: string): Promise<void> {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(apiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -31,7 +32,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async register(email: string, password: string, name?: string): Promise<void> {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(apiUrl('/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name }),
@@ -49,7 +50,7 @@ export const useAuthStore = defineStore('auth', {
 
       this._refreshPromise = (async () => {
         try {
-          const res = await fetch('/api/auth/refresh', {
+          const res = await fetch(apiUrl('/api/auth/refresh'), {
             method: 'POST',
             credentials: 'include',
           });
@@ -60,7 +61,7 @@ export const useAuthStore = defineStore('auth', {
           const data = await res.json();
           this.accessToken = data.accessToken;
 
-          const meRes = await fetch('/api/auth/me', {
+          const meRes = await fetch(apiUrl('/api/auth/me'), {
             headers: { Authorization: `Bearer ${data.accessToken}` },
             credentials: 'include',
           });
@@ -87,7 +88,7 @@ export const useAuthStore = defineStore('auth', {
       useHistoryStore().reset();
 
       if (token) {
-        await fetch('/api/auth/logout', {
+        await fetch(apiUrl('/api/auth/logout'), {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',

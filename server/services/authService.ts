@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 
 export interface TokenPayload {
   userId: string;
@@ -17,16 +17,16 @@ export function comparePassword(password: string, hash: string): Promise<boolean
 }
 
 export function generateAccessToken(payload: TokenPayload): string {
-  return jwt.sign(payload, process.env.JWT_SECRET!, {
-    expiresIn: process.env.JWT_EXPIRES_IN ?? "15m",
-  });
+  const opts: SignOptions = { expiresIn: (process.env.JWT_EXPIRES_IN ?? "15m") as SignOptions["expiresIn"] };
+  return jwt.sign(payload, process.env.JWT_SECRET!, opts);
 }
 
 export function generateRefreshToken(payload: Pick<TokenPayload, "userId">): string {
+  const opts: SignOptions = { expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN ?? "7d") as SignOptions["expiresIn"] };
   return jwt.sign(
     { ...payload, jti: crypto.randomUUID() },
     process.env.JWT_REFRESH_SECRET!,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d" }
+    opts
   );
 }
 
