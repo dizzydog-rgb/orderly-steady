@@ -60,11 +60,11 @@
 ## [0.8.0] - 2026-05-24
 
 ### Added
-- **all_pair 加權矩陣演算法**：三分支決策樹（m=0 / m=1 / m≥2）。m≥2 時雙重迴圈所有 pair (i,j)，相鄰距離乘 ×1.5、跨越乘 ×1.0；查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB 首位懲罰 -30（index=0）、-10（index=1）。
+- **all_pair 加權矩陣演算法**：三分支決策樹（m=0 / m=1 / m≥2）。m≥2 時雙重迴圈所有 pair (i,j)，相鄰距離乘 ×1.5、跨越乘 ×1.0；查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB 首位懲罰 -10（index=0 與 index=1 均為 -10）。
 - **Prisma schema 擴充**：`FoodItem` 新增 `finalScore Float` 欄位，記錄每個槽位的得分貢獻。
 
 ### Changed
-- **SCORE_MATRIX 校調**：F→CC 調至 8、P→CC 調至 7；SC row 加入回補值（SC→F:6、SC→P:6、SC→CC:4），防止 SC 首位過度懲罰；SIMPLE_CARB_PENALTY 統一降低至 {0: -30, 1: -10}。
+- **SCORE_MATRIX 校調**：F→CC 調至 10、P→CC 調至 10；SC row 加入回補值（SC→F:6、SC→P:6、SC→CC:4），防止 SC 首位過度懲罰；SIMPLE_CARB_PENALTY 統一降低至 {0: -10, 1: -10}。
 - **m=1 分支**：COMPLEX_CARB 單項得分由 60 分調至 40 分；tips 不再建議補充精緻碳水。
 - 前後端 `scoringAlgorithm.ts` 同步更新；單元測試案例同步補齊（15 項全過）。
 

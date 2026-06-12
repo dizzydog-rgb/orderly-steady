@@ -37,6 +37,7 @@ npm run dev                    # 前端 Vite dev server
 npm run dev:server             # 後端 tsx watch（熱重載）
 npm run build                  # 型別檢查 + 前端打包
 npm run test                   # Vitest 全部單元測試
+npm run test:coverage          # 產生覆蓋率報告（text + HTML，@vitest/coverage-v8）
 npx vitest run src/services/__tests__/scoringAlgorithm.spec.ts  # 單一測試檔
 npx prisma studio              # 瀏覽器 DB GUI
 ```

@@ -27,7 +27,7 @@ orderly-steady/
 │   │   └── useLang.ts          # CN / EN 語言切換
 │   ├── components/
 │   │   ├── NavBar.vue          # 品牌 logo、導覽連結、≤480px 漢堡選單
-│   │   ├── ScoreTrendChart.vue # Chart.js 折線圖 + backgroundBandsPlugin 分數色帶
+│   │   ├── ScoreTrendChart.vue # Chart.js 折線圖 + backgroundBandsPlugin 分數色帶；支援今日 / 7 / 14 / 30 / 90 / 180 天範圍切換
 │   │   ├── ThemeSwitcher.vue   # 三態膠囊控件（含滑動指示器動畫）
 │   │   └── LangSwitcher.vue    # 語言切換按鈕組
 │   ├── utils/fetchWithAuth.ts  # 統一 API 入口；401 → refresh → retry，失敗跳 /login
@@ -40,17 +40,27 @@ orderly-steady/
 │       ├── MemberView.vue      # 會員資訊 + 登出
 │       └── WhyView.vue         # 控糖科學衛教文章（公開頁面，支援 CN/EN）
 ├── server/                     # 後端
-│   ├── index.ts                # Express 入口（CORS / cookieParser / routes）
+│   ├── app.ts                  # Express app 建立（CORS / cookieParser / routes；供測試 import）
+│   ├── db.ts                   # Prisma client 實例
+│   ├── index.ts                # 入口：import app → listen，dotenv 初始化
 │   ├── routes/
 │   │   ├── auth.ts             # register / login / refresh / logout / me
 │   │   ├── meals.ts            # POST /api/meals（rate limit 10/min）、GET /api/meals/:userId
 │   │   └── foodDictionary.ts   # DELETE /api/food-dictionary（全清 / 單筆）
+│   ├── schemas/
+│   │   ├── auth.schemas.ts     # RegisterSchema / LoginSchema (Zod + z.infer 型別匯出)
+│   │   └── meals.schemas.ts    # CreateMealSchema (Zod + z.infer 型別匯出)
 │   ├── services/
 │   │   ├── ai.ts               # Claude Haiku 分類 + FoodDictionary DB 快取
 │   │   ├── scoringAlgorithm.ts # 後端評分（寫入 DB 前最終計算）
 │   │   └── authService.ts      # JWT 產生與驗證、bcrypt
 │   ├── middleware/
-│   │   └── authMiddleware.ts   # Bearer token 驗證，注入 req.user
+│   │   ├── authMiddleware.ts   # Bearer token 驗證，注入 req.user
+│   │   └── validate.ts         # 通用 Zod validate() middleware factory
+│   ├── __tests__/              # 後端測試（v0.9.2，共 24 個 test cases）
+│   │   ├── middleware/         # authMiddleware.spec.ts / validate.spec.ts
+│   │   ├── routes/             # auth.spec.ts
+│   │   └── services/           # scoringAlgorithm.spec.ts
 │   └── scripts/
 │       └── clearFoodDictionary.ts
 ├── prisma/
@@ -65,33 +75,42 @@ orderly-steady/
 
 ```
 User
-  id            String       @id @default(cuid())
-  email         String       @unique
+  id            String         @id @default(uuid())
+  email         String         @unique
   name          String?
-  password      String?      (bcrypt hash)
-  refreshToken  String?      @db.Text
-  mealRecords   MealRecord[]
+  password      String?        (bcrypt hash；null = 由 meals endpoint 自動建立、尚未完成註冊)
+  records       MealRecord[]
+  refreshTokens RefreshToken[]
+  @@index([email])
+
+RefreshToken
+  id        String   @id @default(uuid())
+  token     String   @unique @db.VarChar(512)
+  userId    String
+  user      User     @relation(...)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId])
 
 MealRecord
-  id            String       @id @default(cuid())
-  userId        String
-  totalScore    Float
-  tips          Json         (string[])
-  recordedAt    DateTime     @default(now())
-  foodItems     FoodItem[]
+  id          String     @id @default(uuid())
+  userId      String
+  totalScore  Int
+  tips        Json?      (string[]；可空)
+  recordedAt  DateTime   @default(now())
+  foodItems   FoodItem[]
   @@index([userId, recordedAt])
 
 FoodItem
-  id             String
-  mealRecordId   String
-  label          String
-  type           FoodType     (enum)
-  sequenceIndex  Int
-  finalScore     Float
+  id            String     @id @default(uuid())
+  mealRecordId  String
+  type          FoodType   (enum)
+  label         String
+  sequenceIndex Int
   @@index([mealRecordId])
 
 FoodDictionary
-  id    String   @id @default(cuid())
+  id    String   @id @default(uuid())
   label String   @unique   ← AI 分類快取，命中直接回傳
   type  FoodType
 
@@ -111,19 +130,19 @@ FoodType enum: FIBER | PROTEIN | COMPLEX_CARB | SIMPLE_CARB | OTHER
 | 分支 | 條件 | 結果 |
 |------|------|------|
 | m=0 | 所有食物均為 OTHER | `totalScore: null`，不寫入 DB |
-| m=1 | 僅 1 項可評分食物 | SIMPLE_CARB → 20 分；其餘 → 60 分 |
+| m=1 | 僅 1 項可評分食物 | SIMPLE_CARB → 20 分；COMPLEX_CARB → 40 分；FIBER / PROTEIN → 60 分 |
 | m≥2 | 2–3 項可評分食物 | all_pair 加權矩陣計算 |
 
 ### 4.2 SCORE_MATRIX（m≥2 時使用）
 
 前者食物 → 後者食物，數值 0–10（越高越好）：
 
-| 前 \ 後 | F | P | CC | SC |
-|---------|---|---|----|----|
-| **F**   | 5 | 10| 8  | 8  |
-| **P**   | 8 | 5 | 7  | 9  |
-| **CC**  | 5 | 5 | 5  | 3  |
-| **SC**  | 1 | 1 | 1  | 0  |
+| 前 \ 後 | F | P  | CC | SC |
+|---------|---|----|----|----|
+| **F**   | 5 | 10 | 10 | 8  |
+| **P**   | 8 |  5 | 10 | 8  |
+| **CC**  | 5 |  5 |  5 | 3  |
+| **SC**  | 6 |  6 |  4 | 0  |
 
 - 前端使用 FoodType value（`'F'`/`'P'`/`'CC'`/`'SC'`）
 - 後端使用 Prisma enum 名稱（`FIBER`/`PROTEIN`/`COMPLEX_CARB`/`SIMPLE_CARB`）
@@ -132,7 +151,7 @@ FoodType enum: FIBER | PROTEIN | COMPLEX_CARB | SIMPLE_CARB | OTHER
 
 - **相鄰 pair**（j = i+1）：乘 ×1.5
 - **跨越 pair**（j > i+1）：乘 ×1.0
-- **SIMPLE_CARB 首位懲罰**：index=0 → -30 分；index=1 → -10 分
+- **SIMPLE_CARB 首位懲罰**：index=0 → -10 分；index=1 → -10 分
 
 ---
 

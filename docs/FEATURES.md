@@ -39,8 +39,8 @@
 - **行為描述**: 前端固定三個欄位（依序解鎖），總分 100 分制；以 all_pair 加權矩陣計算任意食物序列的得分。
 - **演算法分支**:
   - **m=0**（全為 OTHER）：`totalScore: null`，不寫入 DB。
-  - **m=1**（單一可評分食物）：SIMPLE_CARB → 20 分；其餘 → 60 分。
-  - **m≥2**：雙重迴圈所有 pair (i,j)，依距離加權（相鄰 ×1.5，跨越 ×1.0），查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB 首位 -30 分懲罰、index=1 -10 分懲罰。
+  - **m=1**（單一可評分食物）：SIMPLE_CARB → 20 分；COMPLEX_CARB → 40 分；FIBER / PROTEIN → 60 分。
+  - **m≥2**：雙重迴圈所有 pair (i,j)，依距離加權（相鄰 ×1.5，跨越 ×1.0），查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB index=0 懲罰 -10 分、index=1 懲罰 -10 分。
 - **最佳路徑**: Fiber → Protein → Complex Carb = 100 分。
 - **狀態**: 🟢 已完成
 

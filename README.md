@@ -73,16 +73,24 @@ orderly-steady/
 │   ├── types/index.ts          # 共用 TypeScript 介面
 │   └── views/                  # LoginView / HomeView / MemberView / WhyView
 ├── server/                     # 後端（Express 5）
+│   ├── app.ts                  # Express app 建立（供測試 import）
+│   ├── db.ts                   # Prisma client 實例
+│   ├── index.ts                # 入口：import app → listen
 │   ├── routes/
 │   │   ├── auth.ts             # register / login / refresh / logout / me
 │   │   ├── meals.ts            # POST 建立紀錄 / GET 歷史查詢
 │   │   └── foodDictionary.ts   # DELETE 快取管理
+│   ├── schemas/
+│   │   ├── auth.schemas.ts     # RegisterSchema / LoginSchema (Zod)
+│   │   └── meals.schemas.ts    # CreateMealSchema (Zod)
 │   ├── services/
 │   │   ├── authService.ts      # JWT 產生與驗證、bcrypt
 │   │   ├── scoringAlgorithm.ts # 後端評分（寫入前最終計算）
 │   │   └── ai.ts               # Claude Haiku 分類 + DB 快取
 │   ├── middleware/
-│   │   └── authMiddleware.ts   # Bearer token 驗證
+│   │   ├── authMiddleware.ts   # Bearer token 驗證
+│   │   └── validate.ts         # Zod 通用驗證 middleware
+│   ├── __tests__/              # 後端測試（v0.9.2）
 │   └── scripts/
 │       └── clearFoodDictionary.ts
 ├── prisma/
@@ -166,6 +174,7 @@ npm run build                   # TypeScript 型別檢查 + 打包
 
 | 版本 | 說明 |
 |---|---|
+| v0.9.2 | Vitest 後端測試套件（47 tests）、GitHub Actions CI |
 | v0.9.1 | Zod schema 驗證全面導入 |
 | v0.9.0 | ScoreTrendChart 折線圖、Pinia history store、FoodDictionary 管理端點 |
 | v0.8.0 | all_pair 加權矩陣評分演算法重構 |
