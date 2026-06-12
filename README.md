@@ -174,7 +174,8 @@ npm run build                   # TypeScript 型別檢查 + 打包
 
 | 版本 | 說明 |
 |---|---|
-| v0.9.2 | Vitest 後端測試套件（47 tests）、GitHub Actions CI |
+| v0.9.3 | HomeView 訪客試用模式、NavBar 重構 |
+| v0.9.2 | Vitest 後端測試套件（49 tests）、GitHub Actions CI |
 | v0.9.1 | Zod schema 驗證全面導入 |
 | v0.9.0 | ScoreTrendChart 折線圖、Pinia history store、FoodDictionary 管理端點 |
 | v0.8.0 | all_pair 加權矩陣評分演算法重構 |
