@@ -1,48 +1,60 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { storeToRefs } from 'pinia';
-import gsap from 'gsap';
-import { useAuthStore } from '../stores/auth';
-import { useHistoryStore } from '../stores/history';
-import { fetchWithAuth } from '../utils/fetchWithAuth';
-import { apiUrl } from '../utils/apiUrl';
-import type { IMealRecord, IScoringResult } from '../types';
-import ScoreTrendChart from '../components/ScoreTrendChart.vue';
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { storeToRefs } from "pinia";
+import gsap from "gsap";
+import { useAuthStore } from "../stores/auth";
+import { useHistoryStore } from "../stores/history";
+import { fetchWithAuth } from "../utils/fetchWithAuth";
+import { apiUrl } from "../utils/apiUrl";
+import type { IMealRecord, IScoringResult } from "../types";
+import ScoreTrendChart from "../components/ScoreTrendChart.vue";
 
 const authStore = useAuthStore();
 const historyStore = useHistoryStore();
 const { records, isLoading, error } = storeToRefs(historyStore);
 const { fetchHistory, prependRecord } = historyStore;
 
-const slot1 = ref('');
-const slot2 = ref('');
-const slot3 = ref('');
+const slot1 = ref("");
+const slot2 = ref("");
+const slot3 = ref("");
+
+const guestEmail = ref("");
+const guestEmailError = ref("");
 
 const slot2Enabled = computed(() => slot1.value.trim().length > 0);
-const slot3Enabled = computed(() => slot2Enabled.value && slot2.value.trim().length > 0);
+const slot3Enabled = computed(
+  () => slot2Enabled.value && slot2.value.trim().length > 0,
+);
 
-watch(slot1, (val) => { if (!val.trim()) { slot2.value = ''; slot3.value = ''; } });
-watch(slot2, (val) => { if (!val.trim()) slot3.value = ''; });
+watch(slot1, (val) => {
+  if (!val.trim()) {
+    slot2.value = "";
+    slot3.value = "";
+  }
+});
+watch(slot2, (val) => {
+  if (!val.trim()) slot3.value = "";
+});
 
 const scoreResult = ref<IScoringResult | null>(null);
 const displayScore = ref(0);
 const isSubmitting = ref(false);
-const submitError = ref('');
+const submitError = ref("");
 let ctx: gsap.Context;
 
 onMounted(() => {
   ctx = gsap.context(() => {});
-  fetchHistory();
+  if (authStore.isLoggedIn) fetchHistory();
 });
 
 onUnmounted(() => ctx?.revert());
 
 function scoreColor(score: number | null): string {
-  if (score === null) return 'var(--font-color)';
-  if (score >= 80) return 'var(--score-high)';
-  if (score >= 60) return 'var(--score-medium)';
-  if (score >= 40) return 'var(--score-low)';
-  return 'var(--score-critical)';
+  if (score === null) return "var(--font-color)";
+  if (score >= 80) return "var(--score-high)";
+  if (score >= 60) return "var(--score-medium)";
+  if (score >= 40) return "var(--score-low)";
+  return "var(--score-critical)";
 }
 
 function animateScore(newScore: number | null) {
@@ -51,49 +63,93 @@ function animateScore(newScore: number | null) {
     gsap.to(displayScore, {
       duration: 0.6,
       value: newScore,
-      roundProps: 'value',
-      ease: 'power2.out',
+      roundProps: "value",
+      ease: "power2.out",
     });
 
-    const el = document.querySelector('.score-value') as HTMLElement | null;
+    const el = document.querySelector(".score-value") as HTMLElement | null;
     if (!el) return;
 
     if (newScore >= 80) {
-      gsap.fromTo(el, { scale: 1 }, { scale: 1.15, duration: 0.3, yoyo: true, repeat: 3, ease: 'power1.inOut' });
+      gsap.fromTo(
+        el,
+        { scale: 1 },
+        {
+          scale: 1.15,
+          duration: 0.3,
+          yoyo: true,
+          repeat: 3,
+          ease: "power1.inOut",
+        },
+      );
     } else if (newScore >= 60) {
       gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.5 });
     } else if (newScore >= 40) {
-      gsap.fromTo(el, { x: 0 }, { x: 6, duration: 0.07, yoyo: true, repeat: 5, ease: 'none' });
+      gsap.fromTo(
+        el,
+        { x: 0 },
+        { x: 6, duration: 0.07, yoyo: true, repeat: 5, ease: "none" },
+      );
     } else if (newScore >= 20) {
-      gsap.fromTo(el, { x: 0 }, { x: 10, duration: 0.06, yoyo: true, repeat: 7, ease: 'none' });
+      gsap.fromTo(
+        el,
+        { x: 0 },
+        { x: 10, duration: 0.06, yoyo: true, repeat: 7, ease: "none" },
+      );
     } else {
-      gsap.fromTo(el, { x: 0 }, { x: 14, duration: 0.05, yoyo: true, repeat: 10, ease: 'none' });
+      gsap.fromTo(
+        el,
+        { x: 0 },
+        { x: 14, duration: 0.05, yoyo: true, repeat: 10, ease: "none" },
+      );
     }
   });
 }
 
 async function handleSubmit() {
-  submitError.value = '';
-  const foods = [slot1.value.trim(), slot2.value.trim(), slot3.value.trim()].filter(Boolean);
+  submitError.value = "";
+  guestEmailError.value = "";
+
+  const foods = [
+    slot1.value.trim(),
+    slot2.value.trim(),
+    slot3.value.trim(),
+  ].filter(Boolean);
   if (foods.length === 0) return;
+
+  if (!authStore.isLoggedIn) {
+    if (!guestEmail.value.trim()) {
+      guestEmailError.value = "請輸入 Email 以儲存紀錄";
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.value)) {
+      guestEmailError.value = "Email 格式不正確";
+      return;
+    }
+  }
+
+  const email = authStore.isLoggedIn
+    ? authStore.user!.email
+    : guestEmail.value.trim();
 
   isSubmitting.value = true;
   try {
-    const res = await fetchWithAuth(apiUrl('/api/meals'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: authStore.user?.email, foods }),
+    const fetchFn = authStore.isLoggedIn ? fetchWithAuth : fetch.bind(window);
+    const res = await fetchFn(apiUrl("/api/meals"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, foods }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      submitError.value = err.message ?? '提交失敗，請再試一次';
+      submitError.value = err.message ?? "提交失敗，請再試一次";
       return;
     }
     const data = await res.json();
     scoreResult.value = data.analysis;
     animateScore(data.analysis.totalScore);
 
-    if (data.analysis.totalScore !== null) {
+    if (authStore.isLoggedIn && data.analysis.totalScore !== null) {
       const newRecord: IMealRecord = {
         id: data.record?.id ?? String(Date.now()),
         totalScore: data.analysis.totalScore,
@@ -104,27 +160,37 @@ async function handleSubmit() {
       prependRecord(newRecord);
     }
 
-    slot1.value = '';
-    slot2.value = '';
-    slot3.value = '';
+    slot1.value = "";
+    slot2.value = "";
+    slot3.value = "";
   } finally {
     isSubmitting.value = false;
   }
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString("zh-TW", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-const SLOT_CHARS: Record<number, string> = { 1: '一', 2: '二', 3: '三' };
-function numToChinese(n: number): string { return SLOT_CHARS[n] ?? String(n); }
+const SLOT_CHARS: Record<number, string> = { 1: "一", 2: "二", 3: "三" };
+function numToChinese(n: number): string {
+  return SLOT_CHARS[n] ?? String(n);
+}
 
 const FOOD_TYPE_LABELS: Record<string, string> = {
-  FIBER: '膳食纖維', PROTEIN: '蛋白質', COMPLEX_CARB: '複合碳水',
-  SIMPLE_CARB: '精緻碳水', OTHER: '其他',
+  FIBER: "膳食纖維",
+  PROTEIN: "蛋白質",
+  COMPLEX_CARB: "複合碳水",
+  SIMPLE_CARB: "精緻碳水",
+  OTHER: "其他",
 };
 function foodTypeLabel(type: string | null): string {
-  return type ? (FOOD_TYPE_LABELS[type] ?? type) : '—';
+  return type ? (FOOD_TYPE_LABELS[type] ?? type) : "—";
 }
 </script>
 
@@ -133,6 +199,18 @@ function foodTypeLabel(type: string | null): string {
     <!-- 輸入區 -->
     <section class="input-section">
       <h3>記錄本餐進食順序</h3>
+
+      <!-- 訪客 email 輸入 -->
+      <div v-if="!authStore.isLoggedIn" class="slot">
+        <label>輸入 Email，即可開始試用。</label>
+        <input
+          v-model="guestEmail"
+          type="email"
+          placeholder="example@email.com"
+        />
+        <p v-if="guestEmailError" class="error">{{ guestEmailError }}</p>
+      </div>
+
       <div class="slots">
         <div class="slot">
           <label>第一口</label>
@@ -140,32 +218,58 @@ function foodTypeLabel(type: string | null): string {
         </div>
         <div class="slot" :class="{ locked: !slot2Enabled }">
           <label>第二口 <span v-if="!slot2Enabled">🔒</span></label>
-          <input v-model="slot2" type="text" placeholder="輸入食物名稱" :disabled="!slot2Enabled" />
+          <input
+            v-model="slot2"
+            type="text"
+            placeholder="輸入食物名稱"
+            :disabled="!slot2Enabled"
+          />
         </div>
         <div class="slot" :class="{ locked: !slot3Enabled }">
           <label>第三口 <span v-if="!slot3Enabled">🔒</span></label>
-          <input v-model="slot3" type="text" placeholder="輸入食物名稱" :disabled="!slot3Enabled" />
+          <input
+            v-model="slot3"
+            type="text"
+            placeholder="輸入食物名稱"
+            :disabled="!slot3Enabled"
+          />
         </div>
       </div>
 
       <p v-if="submitError" class="error">{{ submitError }}</p>
 
-      <button class="submit-btn" @click="handleSubmit" :disabled="isSubmitting || !slot1.trim()">
-        {{ isSubmitting ? '計算中...' : '送出評分' }}
+      <button
+        class="submit-btn"
+        @click="handleSubmit"
+        :disabled="isSubmitting || !slot1.trim()"
+      >
+        {{ isSubmitting ? "計算中..." : "送出評分" }}
       </button>
     </section>
 
     <!-- 評分結果 -->
     <section v-if="scoreResult" class="result-section">
-      <div class="score-card" :style="{ borderColor: scoreColor(scoreResult.totalScore) }">
+      <div
+        class="score-card"
+        :style="{ borderColor: scoreColor(scoreResult.totalScore) }"
+      >
         <div class="score-label">本餐評分</div>
-        <div class="score-value" :style="{ color: scoreColor(scoreResult.totalScore) }">{{ scoreResult.totalScore === null ? '—' : displayScore }}</div>
+        <div
+          class="score-value"
+          :style="{ color: scoreColor(scoreResult.totalScore) }"
+        >
+          {{ scoreResult.totalScore === null ? "—" : displayScore }}
+        </div>
       </div>
 
       <div class="breakdown" v-if="scoreResult.breakdown.length > 0">
-        <div v-for="b in scoreResult.breakdown" :key="b.slot" class="breakdown-row">
+        <div
+          v-for="b in scoreResult.breakdown"
+          :key="b.slot"
+          class="breakdown-row"
+        >
           <span class="slot-label">第{{ numToChinese(b.slot) }}口</span>
-          <span class="slot-food">{{ b.label ?? '（空）' }}</span>
+          <span class="slot-food">{{ b.label ?? "（空）" }}</span>
           <span class="slot-right">
             <span v-if="b.isOther" class="tag-other">不計分</span>
             <span class="slot-type">{{ foodTypeLabel(b.type) }}</span>
@@ -181,8 +285,8 @@ function foodTypeLabel(type: string | null): string {
       </div>
     </section>
 
-    <!-- 歷史紀錄 -->
-    <section class="history-section">
+    <!-- 歷史紀錄（已登入） -->
+    <section v-if="authStore.isLoggedIn" class="history-section">
       <h3>過往進食紀錄</h3>
 
       <!-- 趨勢圖 -->
@@ -214,13 +318,25 @@ function foodTypeLabel(type: string | null): string {
         <div v-for="r in records" :key="r.id" class="record-card">
           <div class="record-header">
             <span class="record-date">{{ formatDate(r.recordedAt) }}</span>
-            <span class="record-score" :style="{ color: scoreColor(r.totalScore) }">{{ r.totalScore }} 分</span>
+            <span
+              class="record-score"
+              :style="{ color: scoreColor(r.totalScore) }"
+              >{{ r.totalScore }} 分</span
+            >
           </div>
           <div class="record-foods">
-            {{ r.foodItems.map(f => f.label).join(' → ') || '（無食物明細）' }}
+            {{
+              r.foodItems.map((f) => f.label).join(" → ") || "（無食物明細）"
+            }}
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- 未登入：評分結果出現後顯示註冊引導 -->
+    <section v-else-if="scoreResult" class="guest-cta">
+      <p class="cta-text">📊 註冊帳號，追蹤每餐的血糖穩定趨勢</p>
+      <router-link to="/login" class="cta-btn">立即註冊 / 登入</router-link>
     </section>
   </div>
 </template>
@@ -237,7 +353,10 @@ function foodTypeLabel(type: string | null): string {
   box-sizing: border-box;
 }
 
-h2, h3 { margin: 0 0 16px; }
+h2,
+h3 {
+  margin: 0 0 16px;
+}
 
 .input-section {
   display: flex;
@@ -248,9 +367,17 @@ h2, h3 { margin: 0 0 16px; }
   margin: 0 auto;
 }
 
-.slots { display: flex; flex-direction: column; gap: 12px; }
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-.slot { display: flex; flex-direction: column; gap: 6px; }
+.slot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 .slot label {
   font-size: var(--f14);
@@ -268,9 +395,16 @@ h2, h3 { margin: 0 0 16px; }
   transition: border-color 0.2s;
 }
 
-.slot input:focus { border-color: var(--accent); }
-.slot.locked input { opacity: 0.4; cursor: not-allowed; }
-.slot.locked label { opacity: 0.5; }
+.slot input:focus {
+  border-color: var(--accent);
+}
+.slot.locked input {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.slot.locked label {
+  opacity: 0.5;
+}
 
 .error {
   color: var(--color-danger);
@@ -290,10 +424,19 @@ h2, h3 { margin: 0 0 16px; }
   transition: opacity 0.2s;
 }
 
-.submit-btn:hover:not(:disabled) { opacity: 0.85; }
-.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.submit-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+.submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
-.result-section { display: flex; flex-direction: column; gap: 16px; }
+.result-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
 .score-card {
   border: 3px solid var(--score-high);
@@ -330,12 +473,32 @@ h2, h3 { margin: 0 0 16px; }
   gap: 12px;
 }
 
-.breakdown-row:last-child { border-bottom: none; }
+.breakdown-row:last-child {
+  border-bottom: none;
+}
 
-.slot-label { font-size: var(--f14); color: var(--font-color); width: 48px; flex-shrink: 0; }
-.slot-food { flex: 1; font-size: var(--f16); }
-.slot-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-shrink: 0; width: 96px; }
-.slot-type { font-size: var(--f14); color: var(--font-color); }
+.slot-label {
+  font-size: var(--f14);
+  color: var(--font-color);
+  width: 48px;
+  flex-shrink: 0;
+}
+.slot-food {
+  flex: 1;
+  font-size: var(--f16);
+}
+.slot-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 96px;
+}
+.slot-type {
+  font-size: var(--f14);
+  color: var(--font-color);
+}
 
 .tag-other {
   font-size: var(--f14);
@@ -353,11 +516,27 @@ h2, h3 { margin: 0 0 16px; }
   padding: 14px 16px;
 }
 
-.tips h4 { margin: 0 0 8px; color: var(--score-medium); font-size: var(--f16); }
-.tips ul { margin: 0; padding-left: 18px; }
-.tips li { font-size: var(--f16); color: var(--score-medium); margin-bottom: 4px; text-align: left; }
+.tips h4 {
+  margin: 0 0 8px;
+  color: var(--score-medium);
+  font-size: var(--f16);
+}
+.tips ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.tips li {
+  font-size: var(--f16);
+  color: var(--score-medium);
+  margin-bottom: 4px;
+  text-align: left;
+}
 
-.history-section { display: flex; flex-direction: column; gap: 16px; }
+.history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
 .chart-skeleton {
   height: 220px;
@@ -372,7 +551,11 @@ h2, h3 { margin: 0 0 16px; }
   padding: 12px 0;
 }
 
-.skeleton-list { display: flex; flex-direction: column; gap: 10px; }
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .skeleton {
   height: 64px;
   background: var(--social-bg, #242424);
@@ -381,8 +564,13 @@ h2, h3 { margin: 0 0 16px; }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .error-state {
@@ -396,7 +584,11 @@ h2, h3 { margin: 0 0 16px; }
   border-radius: 10px;
 }
 
-.error-text { color: var(--color-danger); font-size: var(--f16); margin: 0; }
+.error-text {
+  color: var(--color-danger);
+  font-size: var(--f16);
+  margin: 0;
+}
 
 .retry-btn {
   padding: 6px 18px;
@@ -409,7 +601,9 @@ h2, h3 { margin: 0 0 16px; }
   transition: background 0.2s;
 }
 
-.retry-btn:hover { background: rgba(248, 113, 113, 0.1); }
+.retry-btn:hover {
+  background: rgba(248, 113, 113, 0.1);
+}
 
 .empty-guide {
   display: flex;
@@ -420,13 +614,29 @@ h2, h3 { margin: 0 0 16px; }
   color: var(--font-color);
 }
 
-.empty-icon { font-size: 2.4rem; margin: 0; }
+.empty-icon {
+  font-size: 2.4rem;
+  margin: 0;
+}
 
-.empty-title { font-size: var(--f18); font-weight: 600; color: var(--font-color); margin: 0; }
+.empty-title {
+  font-size: var(--f18);
+  font-weight: 600;
+  color: var(--font-color);
+  margin: 0;
+}
 
-.empty-hint { font-size: var(--f14); color: var(--font-color); margin: 0; }
+.empty-hint {
+  font-size: var(--f14);
+  color: var(--font-color);
+  margin: 0;
+}
 
-.record-list { display: flex; flex-direction: column; gap: 10px; }
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
 .record-card {
   background: var(--social-bg, #242424);
@@ -442,27 +652,95 @@ h2, h3 { margin: 0 0 16px; }
   margin-bottom: 6px;
 }
 
-.record-date { font-size: var(--f14); color: var(--font-color); }
-.record-score { font-weight: 700; font-size: var(--f18); }
-.record-foods { font-size: var(--f16); color: var(--font-color); }
+.record-date {
+  font-size: var(--f14);
+  color: var(--font-color);
+}
+.record-score {
+  font-weight: 700;
+  font-size: var(--f18);
+}
+.record-foods {
+  font-size: var(--f16);
+  color: var(--font-color);
+}
+
+.guest-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 16px;
+  background: rgba(var(--accent-rgb, 20, 184, 166), 0.08);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.cta-text {
+  font-size: var(--f16);
+  color: var(--font-color);
+  margin: 0;
+}
+
+.cta-btn {
+  display: inline-block;
+  padding: 10px 24px;
+  background: var(--accent);
+  color: var(--font-color-h);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: var(--f16);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.cta-btn:hover {
+  opacity: 0.85;
+}
 
 @media (max-width: 1024px) {
-  .home-page { padding: 24px 20px 48px; gap: 24px; }
+  .home-page {
+    padding: 24px 20px 48px;
+    gap: 24px;
+  }
 }
 
 @media (max-width: 768px) {
-  .home-page { padding: 20px 16px 40px; gap: 20px; }
-  .score-card { padding: 16px 20px; }
-  .breakdown-row { gap: 8px; }
+  .home-page {
+    padding: 20px 16px 40px;
+    gap: 20px;
+  }
+  .score-card {
+    padding: 16px 20px;
+  }
+  .breakdown-row {
+    gap: 8px;
+  }
 }
 
 @media (max-width: 480px) {
-  .home-page { padding: 32px 12px; gap: 16px; }
-  .input-section h3 { margin-bottom: 0; }
-  .submit-btn{ margin-top: 8px}
-  .slot-label { width: 36px; }
-  .breakdown-row { flex-wrap: wrap; }
-  .history-section{ margin-top: 16px}
-  .record-card { padding: 10px 12px; }
+  .home-page {
+    padding: 32px 12px;
+    gap: 16px;
+  }
+  .input-section h3 {
+    margin-bottom: 0;
+  }
+  .submit-btn {
+    margin-top: 8px;
+  }
+  .slot-label {
+    width: 36px;
+  }
+  .breakdown-row {
+    flex-wrap: wrap;
+  }
+  .history-section {
+    margin-top: 16px;
+  }
+  .record-card {
+    padding: 10px 12px;
+  }
 }
 </style>

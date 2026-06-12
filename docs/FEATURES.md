@@ -54,6 +54,7 @@
   - 🟢 `GET /api/auth/me` — 取得目前登入使用者資訊（需 Bearer Token）
   - 🟢 `authMiddleware` — JWT 驗證中介層，可套用於任意受保護路由
   - 🟢 Refresh Token 存 httpOnly cookie（`sameSite=strict`），Access Token 存 Pinia 記憶體
+  - 🟢 **訪客試用模式**：HomeView 為 public 路由，未登入可輸入食物取得評分（email upsert 建立 `password=null` 帳號）；送出後顯示註冊引導 CTA，歷史紀錄僅登入者可見
 - **狀態**: 🟢 已完成
 
 ## 4. 歷史趨勢視覺化 (Analytics)

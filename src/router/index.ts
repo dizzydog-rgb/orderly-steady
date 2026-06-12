@@ -8,7 +8,7 @@ import WhyView from '../views/WhyView.vue';
 const routes = [
   { path: '/login', component: LoginView, meta: { public: true, authRedirect: true } },
   { path: '/why', component: WhyView, meta: { public: true } },
-  { path: '/', component: HomeView },
+  { path: '/', component: HomeView, meta: { public: true } },
   { path: '/member', component: MemberView },
 ];
 
@@ -17,8 +17,17 @@ const router = createRouter({
   routes,
 });
 
+// 首次導航時嘗試以 refresh cookie 靜默恢復 session（public 路由也適用，
+// 否則已登入使用者重整頁面後會被當成訪客）
+let sessionRestoreAttempted = false;
+
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
+
+  if (!authStore.isLoggedIn && !sessionRestoreAttempted) {
+    sessionRestoreAttempted = true;
+    await authStore.refreshAccessToken();
+  }
 
   if (to.meta.public) {
     if (to.meta.authRedirect && authStore.isLoggedIn) return '/';

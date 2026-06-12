@@ -14,13 +14,18 @@ function closeMenu() {
 
 <template>
   <nav class="navbar">
-    <router-link to="/" @click="closeMenu">
-      <img class="logo" :src="oasLogo" alt="Orderly & Steady" />
-    </router-link>
-
-    <div class="nav-actions">
+    <!-- 左側：logo + 導覽連結 -->
+    <div class="nav-left">
+      <router-link to="/" @click="closeMenu">
+        <img class="logo" :src="oasLogo" alt="Orderly & Steady" />
+      </router-link>
       <router-link to="/why" class="nav-link">控糖科學</router-link>
+    </div>
+
+    <!-- 右側：主題切換 + 使用者 icon -->
+    <div class="nav-right">
       <ThemeSwitcher />
+      <router-link v-if="!authStore.isLoggedIn" to="/login" class="nav-link">登入</router-link>
       <router-link v-if="authStore.isLoggedIn" to="/member" class="user-icon" title="會員">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -37,9 +42,11 @@ function closeMenu() {
       </button>
     </div>
 
+    <!-- 行動版展開選單 -->
     <div v-if="menuOpen" class="mobile-menu">
       <router-link to="/" class="mobile-link" @click="closeMenu">首頁</router-link>
       <router-link to="/why" class="mobile-link" @click="closeMenu">控糖科學</router-link>
+      <router-link v-if="!authStore.isLoggedIn" to="/login" class="mobile-link" @click="closeMenu">登入 / 註冊</router-link>
       <router-link v-if="authStore.isLoggedIn" to="/member" class="mobile-link" @click="closeMenu">我的會員</router-link>
     </div>
   </nav>
@@ -58,16 +65,22 @@ function closeMenu() {
   z-index: 100;
 }
 
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .logo {
   height: 32px;
   width: auto;
   display: block;
-}
-
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .nav-link {
@@ -122,7 +135,6 @@ function closeMenu() {
   transition: background 0.2s, color 0.2s;
 }
 
-
 .mobile-link:hover {
   background: var(--accent-bg);
   color: var(--accent);
@@ -139,7 +151,7 @@ function closeMenu() {
 
 @media (max-width: 480px) {
   .navbar { padding: 10px 16px 0 16px; }
-  .nav-actions{ gap: 8px; }
+  .nav-right { gap: 8px; }
   .nav-link { display: none; }
   .user-icon { display: none; }
   .hamburger { display: flex; align-items: center; }

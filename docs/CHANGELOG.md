@@ -2,6 +2,18 @@
 
 所有對「Orderly & Steady」專案的重要變更都將記錄在此文件中。
 
+## [0.9.3] - 2026-06-12
+
+### Added
+- **HomeView 訪客試用模式（先用、後註冊）**：未登入使用者可直接進入首頁輸入食物並取得評分。
+  - `src/router/index.ts`：HomeView 路由加上 `meta: { public: true }`，guard 不再強制跳轉 `/login`；`/member` 維持受保護。
+  - 訪客 email 輸入欄（`.slots` 上方），送出前驗證非空與格式，錯誤顯示於 `guestEmailError`。
+  - `handleSubmit` fetch 分流：登入者用 `fetchWithAuth`、訪客用原生 fetch（`fetch.bind(window)` 避免 this 綁定遺失）；email 來源依登入狀態取自 authStore 或 guestEmail。
+  - 樂觀更新與 `fetchHistory()` 僅登入者執行；未登入時歷史區塊隱藏，評分結果出現後顯示「註冊帳號，追蹤每餐的血糖穩定趨勢」CTA（連往 `/login`）。
+- 後端無修改，沿用 `POST /api/meals` email upsert 行為（`password=null` 帳號可日後經 register 補全密碼）。
+
+---
+
 ## [0.9.2] - 2026-06-06
 
 ### Added
