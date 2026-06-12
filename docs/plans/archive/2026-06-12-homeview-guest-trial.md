@@ -53,13 +53,14 @@
 
 ## 5. Tasks
 
-- [ ] 1. `src/router/index.ts`：HomeView 路由加 `meta: { public: true }`
-- [ ] 2. `src/views/HomeView.vue` script：新增 `guestEmail` / `guestEmailError` ref；修改 `handleSubmit`（訪客 email 驗證、fetch 分流、email 來源、樂觀更新加登入條件）；`onMounted` 的 `fetchHistory` 加登入條件
-- [ ] 3. `src/views/HomeView.vue` template：`.slots` 上方加訪客 email 輸入欄；歷史區塊加 `v-if="authStore.isLoggedIn"`；新增 `v-else-if="scoreResult"` 的 guest-cta 區塊
-- [ ] 4. `src/views/HomeView.vue` style：新增 `.guest-cta` / `.cta-text` / `.cta-btn` CSS
-- [ ] 5. 依第 2 節測試流程手動驗證，並執行 `npm run test` 確認 47 個測試全部通過
+- [x] 1. `src/router/index.ts`：HomeView 路由加 `meta: { public: true }`
+- [x] 2. `src/views/HomeView.vue` script：新增 `guestEmail` / `guestEmailError` ref；修改 `handleSubmit`（訪客 email 驗證、fetch 分流、email 來源、樂觀更新加登入條件）；`onMounted` 的 `fetchHistory` 加登入條件
+- [x] 3. `src/views/HomeView.vue` template：`.slots` 上方加訪客 email 輸入欄；歷史區塊加 `v-if="authStore.isLoggedIn"`；新增 `v-else-if="scoreResult"` 的 guest-cta 區塊
+- [x] 4. `src/views/HomeView.vue` style：新增 `.guest-cta` / `.cta-text` / `.cta-btn` CSS
+- [x] 5. 執行 `npm run test` 確認測試全部通過（第 2 節手動流程留待瀏覽器驗證）
 
 ## 6. 驗收結果
 
-- [ ]（完成後填寫）47 個 Vitest 測試全部通過；訪客流程與登入者流程驗證結果
-- [ ]（完成後填寫）同步更新 docs/FEATURES.md、docs/CHANGELOG.md
+- [x] `npm run test` 49/49 通過（測試數已從計畫撰寫時的 47 增至 49）；`npm run build`（vue-tsc 型別檢查 + Vite 打包）通過
+- [x] 已同步更新 docs/FEATURES.md（會員系統節新增訪客試用模式）、docs/CHANGELOG.md（v0.9.3）
+- [ ] 第 2 節手動測試流程（無痕視窗訪客流程、DB password=null 確認）留待瀏覽器實測
