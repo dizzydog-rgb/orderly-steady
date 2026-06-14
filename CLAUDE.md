@@ -54,7 +54,7 @@ ANTHROPIC_API_KEY=<key>      # 必填，AI 食物分類服務依賴
 **all_pair 加權矩陣演算法**（三分支決策樹）：
 
 - **m=0**（全為 OTHER）：`totalScore: null`，不寫入 DB
-- **m=1**（單一可評分食物）：SIMPLE_CARB → 20 分；其餘 → 60 分；tips 硬編碼均衡建議
+- **m=1**（單一可評分食物）：SIMPLE_CARB → 20 分；COMPLEX_CARB → 40 分；其餘 → 60 分；tips 硬編碼均衡建議
 - **m≥2**：雙重迴圈所有 pair (i,j)，依距離加權（相鄰 ×1.5，跨越 ×1.0），查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB index=0 懲罰 -10，index=1 懲罰 -10
 
 SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodType value `'F'`/`'P'`/`'CC'`/`'SC'`）：

@@ -5,24 +5,32 @@
 ## 1. 測試策略
 我們優先確保核心演算法與健康建議邏輯的單元測試覆蓋率。
 
-- **單元測試 (Unit Tests)**: 針對 `src/services/scoringAlgorithm.ts`。
+- **前端單元測試**: `src/services/__tests__/scoringAlgorithm.spec.ts`
   - 驗證各食物組合的總分計算。
   - 驗證 `tips` 陣列在不同情境下的產出內容。
+- **後端測試** (`server/__tests__/`):
+  - `middleware/authMiddleware.spec.ts` — Bearer token 驗證四分支
+  - `middleware/validate.spec.ts` — Zod schema 合法與非法邊界
+  - `services/scoringAlgorithm.spec.ts` — 後端版 m=0/1/≥2 三分支 + tips
+  - `routes/auth.spec.ts` — register / login 端點（supertest + vi.mock Prisma）
 
 ## 2. 執行測試
 ```bash
 # 執行所有測試 (Vitest)
 npm run test
+
+# 產生覆蓋率報告（text + HTML）
+npm run test:coverage
 ```
 
 ## 3. 撰寫規範
 - **結構**:
   ```typescript
   describe('Scoring Algorithm', () => {
-    it('應正確產生健康建議 (Tips)', () => {
-      const sequence = [FoodType.COMPLEX_CARB];
-      const result = calculateMealScore(sequence);
-      expect(result.tips).toContain('建議加入植物纖維...');
+    it('COMPLEX_CARB 單項應得 40 分', () => {
+      const result = calculateMealScore([FoodType.COMPLEX_CARB]);
+      expect(result.totalScore).toBe(40);
+      expect(result.tips[0]).toContain('膳食纖維');
     });
   });
   ```

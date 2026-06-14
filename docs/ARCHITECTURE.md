@@ -40,7 +40,9 @@ orderly-steady/
 │       ├── MemberView.vue      # 會員資訊 + 登出
 │       └── WhyView.vue         # 控糖科學衛教文章（公開頁面，支援 CN/EN）
 ├── server/                     # 後端
-│   ├── index.ts                # Express 入口（CORS / cookieParser / routes）
+│   ├── app.ts                  # Express app 建立與設定（CORS / cookieParser / routes）
+│   ├── index.ts                # 入口：import app + app.listen()
+│   ├── db.ts                   # Prisma Client singleton
 │   ├── routes/
 │   │   ├── auth.ts             # register / login / refresh / logout / me
 │   │   ├── meals.ts            # POST /api/meals（rate limit 10/min）、GET /api/meals/:userId
@@ -50,7 +52,11 @@ orderly-steady/
 │   │   ├── scoringAlgorithm.ts # 後端評分（寫入 DB 前最終計算）
 │   │   └── authService.ts      # JWT 產生與驗證、bcrypt
 │   ├── middleware/
-│   │   └── authMiddleware.ts   # Bearer token 驗證，注入 req.user
+│   │   ├── authMiddleware.ts   # Bearer token 驗證，注入 req.user
+│   │   └── validate.ts         # Zod schema 驗證 middleware factory
+│   ├── schemas/
+│   │   ├── auth.schemas.ts     # RegisterSchema / LoginSchema
+│   │   └── meals.schemas.ts    # CreateMealSchema
 │   └── scripts/
 │       └── clearFoodDictionary.ts
 ├── prisma/
@@ -65,19 +71,27 @@ orderly-steady/
 
 ```
 User
-  id            String       @id @default(cuid())
-  email         String       @unique
+  id            String         @id @default(uuid())
+  email         String         @unique
   name          String?
-  password      String?      (bcrypt hash)
-  refreshToken  String?      @db.Text
-  mealRecords   MealRecord[]
+  password      String?        (bcrypt hash；null = 未完成註冊的訪客帳號)
+  records       MealRecord[]
+  refreshTokens RefreshToken[]
+
+RefreshToken
+  id        String   @id @default(uuid())
+  token     String   @unique @db.VarChar(512)
+  userId    String
+  user      User     @relation(...)
+  expiresAt DateTime
+  @@index([userId])
 
 MealRecord
-  id            String       @id @default(cuid())
+  id            String     @id @default(uuid())
   userId        String
-  totalScore    Float
-  tips          Json         (string[])
-  recordedAt    DateTime     @default(now())
+  totalScore    Int
+  tips          Json?       (string[])
+  recordedAt    DateTime   @default(now())
   foodItems     FoodItem[]
   @@index([userId, recordedAt])
 
@@ -87,11 +101,10 @@ FoodItem
   label          String
   type           FoodType     (enum)
   sequenceIndex  Int
-  finalScore     Float
   @@index([mealRecordId])
 
 FoodDictionary
-  id    String   @id @default(cuid())
+  id    String   @id @default(uuid())
   label String   @unique   ← AI 分類快取，命中直接回傳
   type  FoodType
 
@@ -111,7 +124,7 @@ FoodType enum: FIBER | PROTEIN | COMPLEX_CARB | SIMPLE_CARB | OTHER
 | 分支 | 條件 | 結果 |
 |------|------|------|
 | m=0 | 所有食物均為 OTHER | `totalScore: null`，不寫入 DB |
-| m=1 | 僅 1 項可評分食物 | SIMPLE_CARB → 20 分；其餘 → 60 分 |
+| m=1 | 僅 1 項可評分食物 | SIMPLE_CARB → 20 分；COMPLEX_CARB → 40 分；其餘 → 60 分 |
 | m≥2 | 2–3 項可評分食物 | all_pair 加權矩陣計算 |
 
 ### 4.2 SCORE_MATRIX（m≥2 時使用）
@@ -120,10 +133,10 @@ FoodType enum: FIBER | PROTEIN | COMPLEX_CARB | SIMPLE_CARB | OTHER
 
 | 前 \ 後 | F | P | CC | SC |
 |---------|---|---|----|----|
-| **F**   | 5 | 10| 8  | 8  |
-| **P**   | 8 | 5 | 7  | 9  |
+| **F**   | 5 | 10| 10 | 8  |
+| **P**   | 8 | 5 | 10 | 8  |
 | **CC**  | 5 | 5 | 5  | 3  |
-| **SC**  | 1 | 1 | 1  | 0  |
+| **SC**  | 6 | 6 | 4  | 0  |
 
 - 前端使用 FoodType value（`'F'`/`'P'`/`'CC'`/`'SC'`）
 - 後端使用 Prisma enum 名稱（`FIBER`/`PROTEIN`/`COMPLEX_CARB`/`SIMPLE_CARB`）
@@ -132,7 +145,7 @@ FoodType enum: FIBER | PROTEIN | COMPLEX_CARB | SIMPLE_CARB | OTHER
 
 - **相鄰 pair**（j = i+1）：乘 ×1.5
 - **跨越 pair**（j > i+1）：乘 ×1.0
-- **SIMPLE_CARB 首位懲罰**：index=0 → -30 分；index=1 → -10 分
+- **SIMPLE_CARB 懲罰**：index=0 → -10 分；index=1 → -10 分（取最大值，不累加）
 
 ---
 

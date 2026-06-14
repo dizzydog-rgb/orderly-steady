@@ -86,7 +86,7 @@ orderly-steady/
 │   └── scripts/
 │       └── clearFoodDictionary.ts
 ├── prisma/
-│   ├── schema.prisma           # User / MealRecord / FoodItem / FoodDictionary
+│   ├── schema.prisma           # User / RefreshToken / MealRecord / FoodItem / FoodDictionary
 │   └── seed.ts                 # 50 筆食物預設分類
 └── docker-compose.yml          # MySQL 容器
 ```
