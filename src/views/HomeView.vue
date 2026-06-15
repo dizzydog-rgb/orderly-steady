@@ -335,8 +335,8 @@ function foodTypeLabel(type: string | null): string {
 
     <!-- 未登入：評分結果出現後顯示註冊引導 -->
     <section v-else-if="scoreResult" class="guest-cta">
-      <p class="cta-text">📊 註冊帳號，追蹤每餐的血糖穩定趨勢</p>
-      <router-link to="/login" class="cta-btn">立即註冊 / 登入</router-link>
+      <p class="cta-text">分數已儲存！登入後可查看完整歷史紀錄</p>
+      <router-link to="/login" class="cta-btn">立即登入</router-link>
     </section>
   </div>
 </template>
