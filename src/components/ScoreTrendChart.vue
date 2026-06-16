@@ -31,10 +31,10 @@ const RANGE_OPTIONS = [
 // 每個時間範圍的標籤間隔（天）：7天每1天、14/30天每7天、90/180天每月
 const LABEL_INTERVAL_DAYS: Record<number, number> = {
   7: 1,
-  14: 7,
+  14: 2,
   30: 7,
-  90: 30,
-  180: 30,
+  90: 7,
+  180: 14,
 };
 
 const selectedDays = ref(7);
