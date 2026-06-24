@@ -7,8 +7,9 @@
     "rootDir": ".",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "strict": true
+    "strict": true,
+    "types": ["node"]
   },
-  "include": ["server/**/*"],
+  "include": ["server/**/*", "prisma/**/*"],
   "exclude": ["node_modules", "src", "dist", "server/__tests__"]
 }

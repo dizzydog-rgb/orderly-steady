@@ -136,3 +136,4 @@ SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodTy
 - `docs/FEATURES.md` — 功能列表與完成狀態
 - `docs/TESTING.md` — 測試規範與指南
 - `docs/CHANGELOG.md` — 更新日誌
+- `docs/API.md` — API 端點參考文件（請求/回應格式、認證、錯誤碼）

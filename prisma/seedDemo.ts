@@ -9,11 +9,49 @@ const DEMO_PASSWORD = "Demo1234";
 const DEMO_NAME = "小林";
 
 const FOOD_BY_TYPE: Record<FoodType, string[]> = {
-  [FoodType.FIBER]:        ["花椰菜", "菠菜", "高麗菜", "生菜", "小黃瓜", "番茄", "香菇", "蘆筍", "苦瓜", "紅蘿蔔"],
-  [FoodType.PROTEIN]:      ["雞胸肉", "豬里肌", "鮭魚", "雞蛋", "豆腐", "蝦仁", "水煮蛋", "鯖魚", "豆干", "毛豆"],
-  [FoodType.COMPLEX_CARB]: ["糙米飯", "地瓜", "燕麥", "全麥吐司", "五穀飯", "南瓜", "白飯", "玉米"],
-  [FoodType.SIMPLE_CARB]:  ["白吐司", "珍珠奶茶", "餅乾", "蛋糕", "含糖飲料", "白麵包"],
-  [FoodType.OTHER]:        [],
+  [FoodType.FIBER]: [
+    "花椰菜",
+    "菠菜",
+    "高麗菜",
+    "生菜",
+    "小黃瓜",
+    "番茄",
+    "香菇",
+    "蘆筍",
+    "苦瓜",
+    "紅蘿蔔",
+  ],
+  [FoodType.PROTEIN]: [
+    "雞胸肉",
+    "豬里肌",
+    "鮭魚",
+    "雞蛋",
+    "豆腐",
+    "蝦仁",
+    "水煮蛋",
+    "鯖魚",
+    "豆干",
+    "毛豆",
+  ],
+  [FoodType.COMPLEX_CARB]: [
+    "糙米飯",
+    "地瓜",
+    "燕麥",
+    "全麥吐司",
+    "五穀飯",
+    "南瓜",
+    "白飯",
+    "玉米",
+  ],
+  [FoodType.SIMPLE_CARB]: [
+    "白吐司",
+    "珍珠奶茶",
+    "餅乾",
+    "蛋糕",
+    "含糖飲料",
+    "白麵包",
+  ],
+  [FoodType.OTHER]: [],
 };
 
 // 各階段的進食順序模板
@@ -47,6 +85,7 @@ const PHASE3_SEQUENCES: FoodType[][] = [
 ];
 
 function pick<T>(arr: T[]): T {
+  if (arr.length === 0) throw new Error("pick() called with empty array");
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
@@ -87,23 +126,23 @@ async function main() {
 
   const TOTAL_DAYS = 180;
   const PHASE2_START = 120; // 120 天前開始第二階段
-  const PHASE3_START = 60;  // 60 天前開始第三階段
+  const PHASE3_START = 60; // 60 天前開始第三階段
 
   let recordCount = 0;
 
-  for (let daysAgo = TOTAL_DAYS; daysAgo >= 0; daysAgo--) {
+  for (let daysAgo = TOTAL_DAYS; daysAgo >= 1; daysAgo--) {
     const phase: 1 | 2 | 3 =
-      daysAgo > PHASE2_START ? 1 :
-      daysAgo > PHASE3_START ? 2 : 3;
+      daysAgo > PHASE2_START ? 1 : daysAgo > PHASE3_START ? 2 : 3;
 
     const dayDate = new Date(today.getTime() - daysAgo * 24 * 60 * 60 * 1000);
 
     // 每日餐數：第一階段偶爾只吃 1-2 餐，後期多吃 3 餐
-    const mealCount = phase === 1
-      ? pick([1, 2, 2, 2, 3])
-      : phase === 2
-        ? pick([2, 2, 3, 3])
-        : pick([2, 3, 3, 3]);
+    const mealCount =
+      phase === 1
+        ? pick([1, 2, 2, 2, 3])
+        : phase === 2
+          ? pick([2, 2, 3, 3])
+          : pick([2, 3, 3, 3]);
 
     // 早餐 7-8 點、午餐 12-13 點、晚餐 18-19 點
     const mealHours = [7, 12, 18].slice(0, mealCount);
@@ -116,8 +155,8 @@ async function main() {
 
       const recordedAt = new Date(
         dayDate.getTime() +
-        (baseHour + Math.random()) * 60 * 60 * 1000 +
-        Math.random() * 30 * 60 * 1000,
+          baseHour * 60 * 60 * 1000 +
+          Math.random() * 60 * 60 * 1000,
       );
 
       await prisma.mealRecord.create({
@@ -141,5 +180,8 @@ async function main() {
 }
 
 main()
-  .catch(e => { console.error(e); process.exit(1); })
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
   .finally(() => prisma.$disconnect());
