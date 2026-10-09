@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import prisma from "../db";
 import {
   hashPassword,
@@ -9,7 +10,12 @@ import {
 } from "../services/authService";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { validate } from "../middleware/validate";
-import { RegisterSchema, LoginSchema } from "../schemas/auth.schemas";
+import {
+  RegisterSchema,
+  LoginSchema,
+  UpdateNicknameSchema,
+  ChangePasswordSchema,
+} from "../schemas/auth.schemas";
 
 const router = Router();
 
@@ -22,6 +28,28 @@ const REFRESH_COOKIE_OPTIONS = {
   maxAge: REFRESH_TOKEN_TTL_MS,
   path: "/api/auth",
 };
+
+// E2E 測試需要反覆重跑，IP 計數會在幾輪內用完額度；僅開發環境可用環境變數旁路
+const isRateLimitDisabled = () =>
+  process.env.NODE_ENV !== "production" && process.env.RATE_LIMIT_DISABLED === "true";
+
+const nicknameRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "請求過於頻繁，請稍後再試" },
+  skip: isRateLimitDisabled,
+});
+
+const passwordRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "請求過於頻繁，請稍後再試" },
+  skip: isRateLimitDisabled,
+});
 
 // POST /api/auth/register
 router.post("/register", validate(RegisterSchema), async (req, res) => {
@@ -148,5 +176,60 @@ router.get("/me", authMiddleware, async (req, res) => {
 
   return res.json({ user });
 });
+
+// PATCH /api/auth/me
+router.patch(
+  "/me",
+  authMiddleware,
+  nicknameRateLimit,
+  validate(UpdateNicknameSchema),
+  async (req, res) => {
+    const { name } = req.body;
+
+    const user = await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: { name },
+      select: { id: true, email: true, name: true },
+    });
+
+    return res.json({ message: "名稱已更新", user });
+  },
+);
+
+// PATCH /api/auth/password
+router.patch(
+  "/password",
+  authMiddleware,
+  passwordRateLimit,
+  validate(ChangePasswordSchema),
+  async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!user) {
+      return res.status(404).json({ error: "使用者不存在" });
+    }
+    if (!user.password) {
+      return res.status(400).json({ error: "此帳號尚未設定密碼，請先完成註冊" });
+    }
+
+    const valid = await comparePassword(currentPassword, user.password);
+    if (!valid) {
+      // 刻意不用 401：fetchWithAuth 會把 401 當成 token 過期而觸發 refresh/強制登出
+      return res.status(400).json({ error: "目前密碼不正確" });
+    }
+
+    const hashed = await hashPassword(newPassword);
+
+    // 變更密碼視為重新驗證身分：撤銷所有裝置的 refresh token
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: user.id }, data: { password: hashed } }),
+      prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+    ]);
+
+    res.clearCookie("refreshToken", { path: "/api/auth" });
+    return res.json({ message: "密碼已更新，請重新登入" });
+  },
+);
 
 export default router;

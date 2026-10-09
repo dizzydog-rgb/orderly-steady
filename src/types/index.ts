@@ -48,3 +48,22 @@ export interface IMealRecord {
   recordedAt: string;
   foodItems: IFoodItemRecord[];
 }
+
+export interface IUpdateNicknameRequest {
+  name: string;
+}
+
+export interface IUpdateNicknameResponse {
+  message: string;
+  user: IUser;
+}
+
+export interface IChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface IApiErrorResponse {
+  error: string;
+  details?: { field: string; message: string }[];
+}

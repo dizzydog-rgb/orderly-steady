@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/auth';
 import LoginView from '../views/LoginView.vue';
 import HomeView from '../views/HomeView.vue';
 import MemberView from '../views/MemberView.vue';
+import SettingsView from '../views/SettingsView.vue';
 import WhyView from '../views/WhyView.vue';
 
 const routes = [
@@ -10,6 +11,7 @@ const routes = [
   { path: '/why', component: WhyView, meta: { public: true } },
   { path: '/', component: HomeView, meta: { public: true } },
   { path: '/member', component: MemberView },
+  { path: '/member/settings', component: SettingsView },
 ];
 
 const router = createRouter({

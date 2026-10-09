@@ -52,9 +52,21 @@
   - 🟢 `POST /api/auth/refresh` — Refresh Token 輪換換發（舊 token 立即失效）
   - 🟢 `POST /api/auth/logout` — 撤銷 DB 中 Refresh Token、清除 httpOnly cookie（需 Bearer Token）
   - 🟢 `GET /api/auth/me` — 取得目前登入使用者資訊（需 Bearer Token）
+  - 🟢 `PATCH /api/auth/me` — 變更名稱（暱稱，trim 後 1–50 字；需 Bearer Token）
+  - 🟢 `PATCH /api/auth/password` — 變更密碼（需驗證目前密碼；成功後撤銷所有裝置的 Refresh Token，強制重新登入）
   - 🟢 `authMiddleware` — JWT 驗證中介層，可套用於任意受保護路由
   - 🟢 Refresh Token 存 httpOnly cookie（`sameSite=strict`），Access Token 存 Pinia 記憶體
   - 🟢 **訪客試用模式**：HomeView 為 public 路由，未登入可輸入食物取得評分（email upsert 建立 `password=null` 帳號）；送出後顯示註冊引導 CTA，歷史紀錄僅登入者可見
+- **狀態**: 🟢 已完成
+
+## 3.1 帳號設定 (Account Settings)
+- **行為描述**：登入後於 `/member/settings` 可變更名稱與密碼。Email 作為帳號唯一識別碼，僅顯示不可編輯。
+- **目前進度**：
+  - 🟢 `SettingsView.vue` — Email 唯讀顯示 + 名稱表單 + 密碼表單（三區塊獨立送出、各自 Loading 與錯誤訊息）
+  - 🟢 名稱不可清空（前端 `required` + 後端 Zod `trim().min(1)`）
+  - 🟢 密碼變更需輸入目前密碼，並於前端比對兩次新密碼是否一致
+  - 🟢 密碼變更成功後全裝置登出（撤銷所有 Refresh Token）並導向 `/login`
+  - 🟢 入口：`MemberView.vue` 的「帳號設定」連結
 - **狀態**: 🟢 已完成
 
 ## 4. 歷史趨勢視覺化 (Analytics)

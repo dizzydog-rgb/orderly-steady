@@ -19,6 +19,8 @@ docker-compose up -d   # 啟動 MySQL 容器（後端依賴，須先啟動）
 npm run build          # 型別檢查 + 打包前端
 npm run test           # 執行所有 Vitest 單元測試
 npx vitest run src/services/__tests__/scoringAlgorithm.spec.ts  # 執行單一測試檔
+npm run test:e2e      # 執行 Playwright E2E 測試（需先啟動 DB、後端、前端）
+npm run seed:e2e      # 手動重置 E2E 測試帳號
 ```
 
 前後端為獨立程序，完整開發須同時啟動 `dev` 與 `dev:server`。後端監聽 **port 3100**（Vite proxy 目標），`server/index.ts` 預設 3000，須在 `.env` 設 `PORT=3100`。
@@ -35,6 +37,7 @@ JWT_REFRESH_EXPIRES_IN=7d
 COOKIE_SECURE=false          # production 改 true
 FRONTEND_URL=http://localhost:5173
 ANTHROPIC_API_KEY=<key>      # 必填，AI 食物分類服務依賴
+MYSQL_ROOT_PASSWORD=<pw>     # docker-compose.yml 以此初始化 MySQL；須與 DATABASE_URL 中的密碼一致
 ```
 
 ## 架構
@@ -86,6 +89,23 @@ SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodTy
 | POST | `/refresh` | Cookie | 換發新 access + refresh token |
 | POST | `/logout` | Bearer | 清除 DB 中 refresh token 及 cookie |
 | GET  | `/me` | Bearer | 回傳目前使用者資訊 |
+| PATCH | `/me` | Bearer | 變更名稱（暱稱）；10 req/5min |
+| PATCH | `/password` | Bearer | 變更密碼，需帶 `currentPassword`；成功後撤銷該使用者所有裝置的 refresh token；5 req/15min |
+
+### E2E 測試帳號
+
+Playwright E2E 測試專用帳號（定義於 `e2e/testAccount.ts`，**僅供自動化測試**，勿用於其他用途）：
+
+```
+Email   : e2e.settings@orderly-steady.test
+Password: E2eTest1234!
+Name    : E2E 測試員
+```
+
+- 每個 test 的 `beforeEach` 都會透過 Prisma 刪除重建此帳號（密碼變更測試會改掉密碼，必須逐案例重置）。
+- `resetE2ETestUser()` 會檢查 `DATABASE_URL` 的 host 必須是 `localhost`／`127.0.0.1`，避免誤對遠端資料庫執行。
+- 與 `prisma/seedDemo.ts` 的示範帳號（`demo@example.com`）刻意分開：示範帳號用於圖表資料，密碼不應被測試改動。
+- 跑 E2E 前請以 `RATE_LIMIT_DISABLED=true npm run dev:server` 啟動後端，否則連跑數輪會觸發密碼端點的 5 req/15min 限制而收到 429。此旁路僅在 `NODE_ENV !== production` 時有效。
 
 ### 前端 Composables
 

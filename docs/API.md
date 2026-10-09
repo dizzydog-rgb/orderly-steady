@@ -216,6 +216,83 @@ Authorization: Bearer <accessToken>
 
 ---
 
+### PATCH /api/auth/me
+
+變更目前登入使用者的名稱（暱稱）。Email 為帳號識別碼，不提供變更。
+
+**認證需求**：`Authorization: Bearer <accessToken>`
+
+**速率限制**：10 req / 5 min
+
+**請求 Body**
+
+```json
+{ "name": "小明" }
+```
+
+| 欄位 | 型別 | 必填 | 規則 |
+|------|------|------|------|
+| name | string | 是 | trim 後 1–50 字；不可為空字串或純空白 |
+
+**成功回應** `200 OK`
+
+```json
+{
+  "message": "名稱已更新",
+  "user": { "id": "clxyz123abc", "email": "user@example.com", "name": "小明" }
+}
+```
+
+**錯誤回應**
+
+| 狀態碼 | 說明 |
+|--------|------|
+| 400 | 名稱為空、純空白或超過 50 字（`details[].field = "name"`） |
+| 401 | Token 無效或過期 |
+| 429 | 請求過於頻繁 |
+
+---
+
+### PATCH /api/auth/password
+
+變更密碼。需驗證目前密碼；成功後會撤銷該使用者**所有裝置**的 refresh token 並清除 cookie，前端須重新登入。
+
+**認證需求**：`Authorization: Bearer <accessToken>`
+
+**速率限制**：5 req / 15 min（與登入同等風險等級，防止以竊得的 access token 暴力猜測原密碼）
+
+**請求 Body**
+
+```json
+{ "currentPassword": "oldpassword123", "newPassword": "newpassword456" }
+```
+
+| 欄位 | 型別 | 必填 | 規則 |
+|------|------|------|------|
+| currentPassword | string | 是 | 非空 |
+| newPassword | string | 是 | 8–100 字，且不得與 currentPassword 相同 |
+
+**成功回應** `200 OK`
+
+```json
+{ "message": "密碼已更新，請重新登入" }
+```
+
+同時回傳 `Set-Cookie` 清除 `refreshToken`。
+
+**錯誤回應**
+
+| 狀態碼 | 說明 |
+|--------|------|
+| 400 | 格式錯誤、新舊密碼相同、**目前密碼不正確**、或帳號尚未設定密碼（meals endpoint 自動建立） |
+| 401 | Token 無效或過期（僅 authMiddleware 產生） |
+| 404 | 使用者不存在 |
+| 429 | 請求過於頻繁 |
+
+> 「目前密碼不正確」刻意回 **400 而非 401**：前端 `fetchWithAuth` 會把任何 401 當成 access token 過期而觸發 refresh/強制登出，使用者只是打錯密碼不應被登出。
+
+---
+
 ## Meals 端點
 
 ### POST /api/meals

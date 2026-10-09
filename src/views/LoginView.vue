@@ -45,11 +45,11 @@ async function handleSubmit() {
       <form @submit.prevent="handleSubmit" class="form">
         <div class="field">
           <label>Email</label>
-          <input v-model="email" type="email" required placeholder="your@email.com" autocomplete="email" />
+          <input v-model="email" type="email" required placeholder="your@email.com" autocomplete="email" data-testid="login-email" />
         </div>
         <div class="field">
           <label>密碼</label>
-          <input v-model="password" type="password" required placeholder="至少 8 個字元" autocomplete="current-password" />
+          <input v-model="password" type="password" required placeholder="至少 8 個字元" autocomplete="current-password" data-testid="login-password" />
         </div>
         <div v-if="tab === 'register'" class="field">
           <label>名稱（選填）</label>
@@ -58,7 +58,7 @@ async function handleSubmit() {
 
         <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
 
-        <button type="submit" class="submit-btn" :disabled="isLoading">
+        <button type="submit" class="submit-btn" :disabled="isLoading" data-testid="login-submit">
           {{ isLoading ? (tab === 'login' ? '登入中...' : '註冊中...') : (tab === 'login' ? '登入' : '註冊') }}
         </button>
       </form>

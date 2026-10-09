@@ -66,6 +66,13 @@ orderly-steady/
 ├── prisma/
 │   ├── schema.prisma
 │   └── seed.ts                 # 50 筆常見食物預設分類
+├── e2e/                        # Playwright E2E 測試
+│   ├── settings.spec.ts        # 帳號設定頁（名稱／密碼變更）
+│   ├── testAccount.ts          # 專用測試帳號常數與 resetE2ETestUser()（含 localhost 防護）
+│   ├── global-setup.ts         # 測試開始前建立測試帳號
+│   ├── global-teardown.ts      # 收斂 Prisma 連線
+│   └── seedTestAccount.ts      # 手動重置腳本（npm run seed:e2e）
+├── playwright.config.ts        # testDir=e2e、baseURL=5173、workers=1（共用測試帳號需序列化）
 └── docker-compose.yml
 ```
 

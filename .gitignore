@@ -27,3 +27,8 @@ dist-ssr
 .claude/settings.local.json
 
 /src/generated/prisma
+
+# Playwright
+/playwright-report/
+/test-results/
+/blob-report/

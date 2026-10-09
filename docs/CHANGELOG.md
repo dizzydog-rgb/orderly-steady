@@ -2,6 +2,30 @@
 
 所有對「Orderly & Steady」專案的重要變更都將記錄在此文件中。
 
+## [0.9.4] - 2026-10-09
+
+### Added
+- **使用者設定（名稱與密碼變更）**：新增 `/member/settings` 頁面，Email 作為帳號識別碼僅顯示不可變更。
+  - `PATCH /api/auth/me`：變更名稱，Zod `trim().min(1).max(50)`，速率限制 10 req/5min。
+  - `PATCH /api/auth/password`：需驗證 `currentPassword`，成功後以 `$transaction` 同時更新密碼雜湊並刪除該使用者所有 `RefreshToken`（全裝置登出），清除 refresh cookie；速率限制 5 req/15min。
+  - 「目前密碼不正確」回 **400 而非 401**：避免 `fetchWithAuth` 把 401 當成 token 過期而觸發 refresh／強制登出。
+  - `src/stores/auth.ts`：新增 `updateNickname()` 與 `changePassword()`（後者成功即清空本地狀態，導航交由 view）。
+  - `src/types/index.ts`：新增 `IUpdateNicknameRequest`、`IUpdateNicknameResponse`、`IChangePasswordRequest`、`IApiErrorResponse`。
+  - `server/schemas/auth.schemas.ts`：抽出共用 `passwordField`，讓註冊與變更密碼共用同一組密碼規則（8–100 字）。
+- **Playwright E2E 測試**：新增 `e2e/` 與 `playwright.config.ts`（`workers: 1`，共用測試帳號需完全序列化），6 個帳號設定情境。
+  - 專用測試帳號定義於 `e2e/testAccount.ts`，每個 test 的 `beforeEach` 重置；`resetE2ETestUser()` 僅允許 host 為 localhost／127.0.0.1。
+  - 新增 script：`npm run test:e2e`、`npm run seed:e2e`；安裝 `@playwright/test`、移除未使用的 `playwright` 核心套件。
+  - `RATE_LIMIT_DISABLED=true`（僅 `NODE_ENV !== production` 有效）可在反覆重跑 E2E 時旁路速率限制。
+
+### Changed
+- `vite.config.ts`：Vitest 加上 `exclude: [...configDefaults.exclude, 'e2e/**']`，避免 Playwright spec 被當成單元測試執行。
+- `tsconfig.node.json`：`include` 加入 `playwright.config.ts` 與 `e2e/**/*.ts`，讓 e2e 程式碼納入型別檢查。
+- `src/views/LoginView.vue`：email／password／submit 補上 `data-testid`（既有 `<label>` 未以 `for`/`id` 關聯，`getByLabel()` 無法選取）。
+- `src/views/MemberView.vue`：新增「帳號設定」連結。
+- 測試數量：Vitest 47 → 63（新增 `PATCH /me`、`PATCH /password` 路由測試與兩組 schema 驗證測試）。
+
+---
+
 ## [0.9.3] - 2026-06-12
 
 ### Added

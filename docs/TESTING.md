@@ -18,7 +18,12 @@
   - `services/scoringAlgorithm.spec.ts`（後端版）：m=0/1/≥2 三分支 + tips 文字觸發條件
   - `routes/auth.spec.ts`：以 supertest + `vi.mock` Prisma 測試 register（201/400/409）與 login（200/400/401）
 
-**合計：47 個測試，全部通過。**
+### E2E 測試（Playwright）
+- **路徑**：`e2e/settings.spec.ts`
+- **測試數量**：6 個 test cases（帳號設定頁）
+- 覆蓋：Email 唯讀（頁面無可編輯 email input）、名稱更新後重整仍保留、名稱清空被前端擋下且不送出請求、目前密碼錯誤顯示 400 訊息且不被強制登出、兩次新密碼不一致被前端擋下、密碼變更成功後導向 `/login` 且舊密碼失效／新密碼可登入
+
+**合計：Vitest 63 個測試 + Playwright 6 個 E2E 測試，全部通過。**
 
 ---
 
@@ -30,6 +35,12 @@ npm run test
 
 # 產生覆蓋率報告（text + HTML，@vitest/coverage-v8）
 npm run test:coverage
+
+# 執行 E2E 測試（需先啟動 MySQL、後端、前端；後端建議帶 RATE_LIMIT_DISABLED=true）
+npm run test:e2e
+
+# 手動重置 E2E 測試帳號
+npm run seed:e2e
 
 # 執行單一測試檔
 npx vitest run src/services/__tests__/scoringAlgorithm.spec.ts
