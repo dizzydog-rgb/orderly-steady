@@ -1,0 +1,4 @@
+#!/bin/sh
+# 掃描即將 commit 的新增內容，發現機密（遠端連線字串、API 金鑰、私鑰、.env 檔）就中止。
+# 啟用方式（每個 clone 執行一次）：npm run hooks:install
+exec node scripts/check-secrets.ts

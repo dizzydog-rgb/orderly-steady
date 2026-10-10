@@ -13,8 +13,12 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "seed": "tsx prisma/seed.ts",
+    "seed:demo": "tsx prisma/seedDemo.ts",
+    "seed:demo:remote": "tsx --env-file=.env.railway.local prisma/seedDemo.ts",
     "test:e2e": "playwright test",
-    "seed:e2e": "tsx e2e/seedTestAccount.ts"
+    "seed:e2e": "tsx e2e/seedTestAccount.ts",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "check:secrets": "node scripts/check-secrets.ts --all"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",

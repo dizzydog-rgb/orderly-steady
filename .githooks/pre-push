@@ -1,0 +1,5 @@
+#!/bin/sh
+# 上傳前逐一掃描每個即將推送的 commit；即使機密在後續 commit 被刪除，
+# 它仍存在於歷史中並會被上傳，所以不能只看最後的檔案內容。
+# 啟用方式（每個 clone 執行一次）：npm run hooks:install
+exec node scripts/check-secrets.ts --push

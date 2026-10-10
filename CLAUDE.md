@@ -21,6 +21,9 @@ npm run test           # 執行所有 Vitest 單元測試
 npx vitest run src/services/__tests__/scoringAlgorithm.spec.ts  # 執行單一測試檔
 npm run test:e2e      # 執行 Playwright E2E 測試（需先啟動 DB、後端、前端）
 npm run seed:e2e      # 手動重置 E2E 測試帳號
+npm run seed:demo:remote  # 對遠端資料庫重建示範帳號（連線字串讀自 .env.railway.local）
+npm run hooks:install  # 啟用 pre-commit／pre-push 機密掃描（每個 clone 執行一次）
+npm run check:secrets  # 手動掃描所有被追蹤的檔案
 ```
 
 前後端為獨立程序，完整開發須同時啟動 `dev` 與 `dev:server`。後端監聽 **port 3100**（Vite proxy 目標），`server/index.ts` 預設 3000，須在 `.env` 設 `PORT=3100`。
@@ -154,6 +157,10 @@ Name    : E2E 測試員
 - **組件化設計**：UI 組件與邏輯組件分離，遵循單一職責原則
 - **GSAP 動畫**：僅在 `onMounted` 觸發，使用 `gsap.context()` 清理；依評分區間差異化——80+ 彈跳綠光、60-79 淡入黃示、40-59 震動黃綠、20-39 震動橘警告、<20 強烈震動紅色嚴重警報
 - **Loading State**：串接 AI API 及高頻搜尋一律實作 Loading State + Debounce 防抖
+- **機密不得出現在指令列或被追蹤的檔案**：連線字串、API 金鑰只能放在 `.env` 或 `.env.<名稱>.local`（皆已被忽略）。
+  - 對遠端資料庫執行指令一律用 `npx tsx --env-file=.env.railway.local <script>`（或 `npm run seed:demo:remote`）。**禁止** `DATABASE_URL="…" <指令>` 這種內嵌寫法——指令全文可能被存進有被追蹤的 `.claude/settings.json` 允許清單，密碼就會跟著進版本庫。
+  - 輸出或檢視可能含機密的內容時先遮蔽（例如只印主機名稱），不要把密碼印到對話中。
+  - `.githooks/pre-commit`、`.githooks/pre-push` 與 CI 會以 `scripts/check-secrets.ts` 掃描並中止；誤判時在該行加上 `secret-scan:allow`，不要用 `--no-verify`。詳見 `docs/DEVELOPMENT.md` 4.1。
 - **開發前必須建立計畫**：每次進行功能修改或新增前，先依照 `docs/plans/_template.md` 的格式，在 `docs/plans/` 建立一份今日計畫（`YYYY-MM-DD-<feature-name>.md`），與使用者確認計畫內容後才開始撰寫程式碼；功能完成後移至 `docs/plans/archive/`
 
 ## 必要遵守項目

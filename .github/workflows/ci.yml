@@ -22,6 +22,10 @@ jobs:
           node-version: 24
           cache: npm
 
+      # 與 pre-commit／pre-push hook 相同的掃描；hook 未啟用或被跳過時的最後防線
+      - name: Scan for committed secrets
+        run: node scripts/check-secrets.ts --all
+
       - name: Install dependencies
         run: npm install
 

@@ -2,6 +2,31 @@
 
 所有對「Orderly & Steady」專案的重要變更都將記錄在此文件中。
 
+## [0.9.6] - 2026-10-10
+
+### Security
+- **機密掃描**：新增 `scripts/check-secrets.ts`（規則在 `scripts/secretScan.ts`），由 Node 原生執行、不依賴 `node_modules`。
+  - 攔截：帶帳密且主機非 `localhost`／`127.0.0.1` 的連線字串、`sk-ant-` 開頭的 Anthropic 金鑰、PEM 私鑰、`.env`／`.env.*` 檔案（`.env.example`、`.env.production` 除外）。回報時密碼一律遮蔽。
+  - `.githooks/pre-commit`：掃描已 staged 的新增內容。
+  - `.githooks/pre-push`：逐一掃描每個即將推送的 commit，機密加入後又刪除也攔得到。
+  - CI 新增 `Scan for committed secrets` 步驟，掃描所有被追蹤的檔案。
+  - 啟用方式：`npm run hooks:install`（每個 clone 一次）。刻意不放在 `prepare` script，因為 `Dockerfile` 的 `npm ci` 環境沒有 git 也沒有 `scripts/`。
+  - 誤判時在該行加上 `secret-scan:allow`。
+- **遠端資料庫指令不再內嵌連線字串**：新增 `npm run seed:demo:remote`，以 `tsx --env-file=.env.railway.local` 載入；`CLAUDE.md` 明文禁止 `DATABASE_URL="…" <指令>` 的寫法。
+  - 起因：一條內嵌遠端連線字串的指令被加入 Claude Code 允許清單，指令全文連同密碼寫進了有被追蹤的 `.claude/settings.json`。該修改在 commit 前被發現並移除，**未曾進入版本歷史**。
+
+### Added
+- `npm run seed:demo`、`npm run seed:demo:remote`、`npm run hooks:install`、`npm run check:secrets`。
+- `.gitattributes`：`.githooks/*` 強制 LF，避免 `core.autocrlf=true` 的 Windows 環境在 checkout 時轉成 CRLF 而讓 hook 失效。
+- `scripts/__tests__/check-secrets.spec.ts`：42 項單元測試。
+
+### Changed
+- `tsconfig.node.json`：`include` 加入 `scripts/**/*.ts`。
+- `docs/DEVELOPMENT.md`：新增「4.1 機密管理」；Node 前置需求更新為 22.18 以上。
+- `.gitignore`：補上環境檔命名慣例的註解（未新增忽略規則）。
+
+---
+
 ## [0.9.5] - 2026-10-10
 
 ### Added

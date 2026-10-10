@@ -23,6 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
+# 含機密的環境檔一律以 .local 結尾（由上方的 *.local 忽略），例如 .env.railway.local。
+# .env.production 只放會打包進前端的公開設定，因此刻意追蹤。
 .env
 .claude/settings.local.json
 
