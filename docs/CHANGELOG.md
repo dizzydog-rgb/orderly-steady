@@ -24,6 +24,11 @@
 - `tsconfig.node.json`：`include` 加入 `scripts/**/*.ts`。
 - `docs/DEVELOPMENT.md`：新增「4.1 機密管理」；Node 前置需求更新為 22.18 以上。
 - `.gitignore`：補上環境檔命名慣例的註解（未新增忽略規則）。
+- `CLAUDE.md` 瘦身（182 → 99 行）：只保留專案概述、常用指令、會影響跨模組開發的架構重點（含評分演算法的 SCORE_MATRIX）、E2E 測試帳號與關鍵規則，其餘細節移到 docs。
+  - `docs/TESTING.md`：新增「2.1 E2E 測試：前置條件與測試資料」（速率限制旁路、帳號重置、測試食物）。
+  - `docs/ARCHITECTURE.md`：Auth 補上多裝置登入與補全註冊；AI 分類補上入口函式、charset 與快取管理端點；個人分類覆寫補上共用速率限制、`record: null` 的原因與 `.breakdown` 不可加 `overflow: hidden`；新增「7.1 關鍵前端模組」。
+  - `docs/DEVELOPMENT.md`：環境變數補上 `MYSQL_ROOT_PASSWORD`。
+  - 順帶修正：原 `CLAUDE.md` 寫 `ScoreTrendChart`「需 ≥2 筆才渲染折線圖」、範圍為 7/14/30/90/180 天，與程式碼不符（實際為範圍內有紀錄即渲染，且有「當日」選項），移入 `docs/ARCHITECTURE.md` 時已更正。
 
 ---
 

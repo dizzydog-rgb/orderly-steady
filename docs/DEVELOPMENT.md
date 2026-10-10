@@ -69,6 +69,7 @@ npm run check:secrets          # 手動掃描所有被追蹤的檔案
 
 ```env
 DATABASE_URL="mysql://root:your_password@localhost:3306/glucose_db?charset=utf8mb4"
+MYSQL_ROOT_PASSWORD=your_password   # docker-compose.yml 以此初始化 MySQL；須與 DATABASE_URL 中的密碼一致
 PORT=3100
 JWT_SECRET=<64 字元隨機字串>
 JWT_REFRESH_SECRET=<另一組 64 字元隨機字串>
