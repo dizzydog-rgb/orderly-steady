@@ -1,8 +1,16 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from 'vitest';
 import { validate } from '../../middleware/validate';
-import { RegisterSchema } from '../../schemas/auth.schemas';
-import { CreateMealSchema } from '../../schemas/meals.schemas';
+import {
+  RegisterSchema,
+  UpdateNicknameSchema,
+  ChangePasswordSchema,
+} from '../../schemas/auth.schemas';
+import {
+  CreateMealSchema,
+  UpdateFoodTypeSchema,
+  UpsertFoodOverrideSchema,
+} from '../../schemas/meals.schemas';
 
 function makeReqRes(body: unknown) {
   const req: any = { body };
@@ -65,5 +73,101 @@ describe('validate middleware', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('validate middleware — UpdateNicknameSchema', () => {
+  it('trims the nickname before handing it to the handler', () => {
+    const { req, res, next } = makeReqRes({ name: '  小林  ' });
+    validate(UpdateNicknameSchema)(req, res, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(req.body.name).toBe('小林');
+  });
+
+  it('returns 400 with field="name" for a whitespace-only nickname', () => {
+    const { req, res, next } = makeReqRes({ name: '   ' });
+    validate(UpdateNicknameSchema)(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].details[0].field).toBe('name');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with field="name" when nickname exceeds 50 chars', () => {
+    const { req, res, next } = makeReqRes({ name: 'a'.repeat(51) });
+    validate(UpdateNicknameSchema)(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].details[0].field).toBe('name');
+  });
+});
+
+describe('validate middleware — ChangePasswordSchema', () => {
+  it('calls next() for a valid password change payload', () => {
+    const { req, res, next } = makeReqRes({
+      currentPassword: 'password123',
+      newPassword: 'newpassword456',
+    });
+    validate(ChangePasswordSchema)(req, res, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with field="newPassword" when it equals the current password', () => {
+    const { req, res, next } = makeReqRes({
+      currentPassword: 'password123',
+      newPassword: 'password123',
+    });
+    validate(ChangePasswordSchema)(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].details[0].field).toBe('newPassword');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with field="newPassword" when shorter than 8 chars', () => {
+    const { req, res, next } = makeReqRes({ currentPassword: 'password123', newPassword: 'short' });
+    validate(ChangePasswordSchema)(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].details[0].field).toBe('newPassword');
+  });
+});
+
+describe('validate middleware — food type correction schemas', () => {
+  it('calls next() for a known food type', () => {
+    const { req, res, next } = makeReqRes({ type: 'PROTEIN' });
+    validate(UpdateFoodTypeSchema)(req, res, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with field="type" for an unknown food type', () => {
+    const { req, res, next } = makeReqRes({ type: 'F' });
+    validate(UpdateFoodTypeSchema)(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].details[0].field).toBe('type');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with field="label" when the label is only full-width spaces', () => {
+    const { req, res, next } = makeReqRes({ label: '　　', type: 'PROTEIN' });
+    validate(UpsertFoodOverrideSchema)(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].details[0].field).toBe('label');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with field="label" when the label exceeds 100 chars', () => {
+    const { req, res, next } = makeReqRes({ label: 'a'.repeat(101), type: 'PROTEIN' });
+    validate(UpsertFoodOverrideSchema)(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].details[0].field).toBe('label');
   });
 });

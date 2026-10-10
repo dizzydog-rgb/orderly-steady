@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { FoodType } from "@prisma/client";
+import type { Prisma, UserFoodOverride } from "@prisma/client";
 import prisma from "../db";
+import { normalizeLabel } from "./foodLabel";
 
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -42,7 +44,20 @@ async function claudeClassify(label: string): Promise<FoodType> {
   return match ? (VALID_TYPES[match[0]] ?? FoodType.OTHER) : FoodType.OTHER;
 }
 
-export async function getFoodType(label: string): Promise<FoodType> {
+// 查詢順序：個人覆寫（僅在帶 userId 時）→ 全域 FoodDictionary 快取 → Claude API
+export async function getFoodType(rawLabel: string, userId?: string): Promise<FoodType> {
+  const label = normalizeLabel(rawLabel);
+
+  if (userId) {
+    const override = await prisma.userFoodOverride.findUnique({
+      where: { userId_label: { userId, label } },
+    });
+    if (override) {
+      console.log(`[AI] User override: "${label}" → ${override.type}`);
+      return override.type;
+    }
+  }
+
   const cached = await prisma.foodDictionary.findUnique({ where: { label } });
   if (cached) {
     console.log(`[AI] Cache hit: "${label}" → ${cached.type}`);
@@ -54,4 +69,20 @@ export async function getFoodType(label: string): Promise<FoodType> {
   console.log(`[AI] Claude classified: "${label}" → ${type}`);
   await prisma.foodDictionary.create({ data: { label, type } });
   return type;
+}
+
+// 寫入個人覆寫；只影響該使用者，全域 FoodDictionary 不受使用者操作改動。
+// 傳入 tx 可併入呼叫端的 transaction。
+export function upsertFoodOverride(
+  userId: string,
+  rawLabel: string,
+  type: FoodType,
+  db: Prisma.TransactionClient = prisma,
+): Promise<UserFoodOverride> {
+  const label = normalizeLabel(rawLabel);
+  return db.userFoodOverride.upsert({
+    where: { userId_label: { userId, label } },
+    update: { type },
+    create: { userId, label, type },
+  });
 }

@@ -2,6 +2,9 @@
   "name": "orderly-steady",
   "compatibility_date": "2026-06-09",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    // 找不到對應檔案時回傳 index.html（200），讓前端路由處理 /login、/member 等路徑；
+    // 少了這行，直接開啟或重新整理子頁面會得到 404 空白頁
+    "not_found_handling": "single-page-application"
   }
 }

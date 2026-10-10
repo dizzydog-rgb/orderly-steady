@@ -29,6 +29,7 @@ async function handleLogout() {
 
       <div class="actions">
         <router-link to="/" class="back-link">← 返回首頁</router-link>
+        <router-link to="/member/settings" class="back-link" data-testid="member-settings-link">帳號設定</router-link>
         <button class="logout-btn" @click="handleLogout" :disabled="isLoggingOut">
           {{ isLoggingOut ? '登出中...' : '登出' }}
         </button>

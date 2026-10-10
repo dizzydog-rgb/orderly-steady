@@ -6,13 +6,23 @@ import { useAuthStore } from "../stores/auth";
 import { useHistoryStore } from "../stores/history";
 import { fetchWithAuth } from "../utils/fetchWithAuth";
 import { apiUrl } from "../utils/apiUrl";
-import type { IMealRecord, IScoringResult } from "../types";
+import type {
+  BackendFoodType,
+  IApiErrorResponse,
+  IFoodTypeCorrectionResponse,
+  IMealRecord,
+  IScoringResult,
+  IUpdateFoodTypeRequest,
+  IUpsertFoodOverrideRequest,
+} from "../types";
 import ScoreTrendChart from "../components/ScoreTrendChart.vue";
+import FoodTypeEditor from "../components/FoodTypeEditor.vue";
 
 const authStore = useAuthStore();
 const historyStore = useHistoryStore();
 const { records, isLoading, error } = storeToRefs(historyStore);
-const { fetchHistory, prependRecord } = historyStore;
+const { fetchHistory, prependRecord, updateRecord, removeRecord } =
+  historyStore;
 
 const slot1 = ref("");
 const slot2 = ref("");
@@ -40,6 +50,12 @@ const scoreResult = ref<IScoringResult | null>(null);
 const displayScore = ref(0);
 const isSubmitting = ref(false);
 const submitError = ref("");
+
+// 修正分類用：當餐已寫入的紀錄 id（全為「其他」時沒有紀錄，為 null）與送出的食物清單
+const currentRecordId = ref<string | null>(null);
+const lastSubmittedFoods = ref<string[]>([]);
+const isCorrecting = ref(false);
+const correctionError = ref("");
 let ctx: gsap.Context;
 
 onMounted(() => {
@@ -128,36 +144,13 @@ async function handleSubmit() {
     }
   }
 
-  const email = authStore.isLoggedIn
-    ? authStore.user!.email
-    : guestEmail.value.trim();
-
   isSubmitting.value = true;
+  correctionError.value = "";
   try {
-    const fetchFn = authStore.isLoggedIn ? fetchWithAuth : fetch.bind(window);
-    const res = await fetchFn(apiUrl("/api/meals"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, foods }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      submitError.value = err.message ?? "提交失敗，請再試一次";
+    const errorMessage = await submitFoods(foods);
+    if (errorMessage) {
+      submitError.value = errorMessage;
       return;
-    }
-    const data = await res.json();
-    scoreResult.value = data.analysis;
-    animateScore(data.analysis.totalScore);
-
-    if (authStore.isLoggedIn && data.analysis.totalScore !== null) {
-      const newRecord: IMealRecord = {
-        id: data.record?.id ?? String(Date.now()),
-        totalScore: data.analysis.totalScore,
-        tips: data.analysis.tips,
-        recordedAt: new Date().toISOString(),
-        foodItems: data.record?.foodItems ?? [],
-      };
-      prependRecord(newRecord);
     }
 
     slot1.value = "";
@@ -165,6 +158,106 @@ async function handleSubmit() {
     slot3.value = "";
   } finally {
     isSubmitting.value = false;
+  }
+}
+
+// 送出食物清單並套用回傳的評分結果；成功回傳 null，失敗回傳錯誤訊息
+async function submitFoods(foods: string[]): Promise<string | null> {
+  const email = authStore.isLoggedIn
+    ? authStore.user!.email
+    : guestEmail.value.trim();
+
+  const fetchFn = authStore.isLoggedIn ? fetchWithAuth : fetch.bind(window);
+  const res = await fetchFn(apiUrl("/api/meals"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, foods }),
+  });
+  if (!res.ok) return readApiError(res, "提交失敗，請再試一次");
+
+  const data = await res.json();
+  scoreResult.value = data.analysis;
+  lastSubmittedFoods.value = foods;
+  currentRecordId.value = data.record?.id ?? null;
+  animateScore(data.analysis.totalScore);
+
+  if (authStore.isLoggedIn && data.analysis.totalScore !== null) {
+    const newRecord: IMealRecord = {
+      id: data.record?.id ?? String(Date.now()),
+      totalScore: data.analysis.totalScore,
+      tips: data.analysis.tips,
+      recordedAt: new Date().toISOString(),
+      foodItems: data.record?.foodItems ?? [],
+    };
+    prependRecord(newRecord);
+  }
+  return null;
+}
+
+async function readApiError(res: Response, fallback: string): Promise<string> {
+  const err: Partial<IApiErrorResponse> = await res.json().catch(() => ({}));
+  return err.details?.[0]?.message ?? err.error ?? fallback;
+}
+
+// 使用者修正某一口的食物類別：後端重算當餐分數並記住這個選擇
+async function handleTypeChange(slot: number, type: BackendFoodType) {
+  if (isCorrecting.value || isSubmitting.value) return;
+
+  correctionError.value = "";
+  isCorrecting.value = true;
+  try {
+    const recordId = currentRecordId.value;
+    if (recordId) {
+      const body: IUpdateFoodTypeRequest = { type };
+      const res = await fetchWithAuth(
+        apiUrl(`/api/meals/${recordId}/items/${slot - 1}`),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!res.ok) {
+        correctionError.value = await readApiError(
+          res,
+          "修正分類失敗，請再試一次",
+        );
+        return;
+      }
+      const data: IFoodTypeCorrectionResponse = await res.json();
+      scoreResult.value = data.analysis;
+      if (data.record) {
+        updateRecord(data.record);
+      } else {
+        removeRecord(recordId);
+        currentRecordId.value = null;
+      }
+      animateScore(data.analysis.totalScore);
+      return;
+    }
+
+    // 當餐全為「其他」時沒有寫入紀錄可修改：先存下個人分類，再以相同食物重送一次
+    const label = lastSubmittedFoods.value[slot - 1];
+    if (!label) return;
+    const body: IUpsertFoodOverrideRequest = { label, type };
+    const res = await fetchWithAuth(apiUrl("/api/food-overrides"), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      correctionError.value = await readApiError(
+        res,
+        "修正分類失敗，請再試一次",
+      );
+      return;
+    }
+    const errorMessage = await submitFoods(lastSubmittedFoods.value);
+    if (errorMessage) correctionError.value = errorMessage;
+  } catch {
+    correctionError.value = "網路錯誤，請確認連線後重試";
+  } finally {
+    isCorrecting.value = false;
   }
 }
 
@@ -181,17 +274,6 @@ const SLOT_CHARS: Record<number, string> = { 1: "一", 2: "二", 3: "三" };
 function numToChinese(n: number): string {
   return SLOT_CHARS[n] ?? String(n);
 }
-
-const FOOD_TYPE_LABELS: Record<string, string> = {
-  FIBER: "膳食纖維",
-  PROTEIN: "蛋白質",
-  COMPLEX_CARB: "複合碳水",
-  SIMPLE_CARB: "精緻碳水",
-  OTHER: "其他",
-};
-function foodTypeLabel(type: string | null): string {
-  return type ? (FOOD_TYPE_LABELS[type] ?? type) : "—";
-}
 </script>
 
 <template>
@@ -207,6 +289,7 @@ function foodTypeLabel(type: string | null): string {
           v-model="guestEmail"
           type="email"
           placeholder="example@email.com"
+          data-testid="guest-email"
         />
         <p v-if="guestEmailError" class="error">{{ guestEmailError }}</p>
       </div>
@@ -214,7 +297,12 @@ function foodTypeLabel(type: string | null): string {
       <div class="slots">
         <div class="slot">
           <label>第一口</label>
-          <input v-model="slot1" type="text" placeholder="輸入食物名稱" />
+          <input
+            v-model="slot1"
+            type="text"
+            placeholder="輸入食物名稱"
+            data-testid="food-input-1"
+          />
         </div>
         <div class="slot" :class="{ locked: !slot2Enabled }">
           <label>第二口 <span v-if="!slot2Enabled">🔒</span></label>
@@ -223,6 +311,7 @@ function foodTypeLabel(type: string | null): string {
             type="text"
             placeholder="輸入食物名稱"
             :disabled="!slot2Enabled"
+            data-testid="food-input-2"
           />
         </div>
         <div class="slot" :class="{ locked: !slot3Enabled }">
@@ -232,6 +321,7 @@ function foodTypeLabel(type: string | null): string {
             type="text"
             placeholder="輸入食物名稱"
             :disabled="!slot3Enabled"
+            data-testid="food-input-3"
           />
         </div>
       </div>
@@ -241,7 +331,8 @@ function foodTypeLabel(type: string | null): string {
       <button
         class="submit-btn"
         @click="handleSubmit"
-        :disabled="isSubmitting || !slot1.trim()"
+        :disabled="isSubmitting || isCorrecting || !slot1.trim()"
+        data-testid="meal-submit"
       >
         {{ isSubmitting ? "計算中..." : "送出評分" }}
       </button>
@@ -253,10 +344,17 @@ function foodTypeLabel(type: string | null): string {
         class="score-card"
         :style="{ borderColor: scoreColor(scoreResult.totalScore) }"
       >
-        <div class="score-label">本餐評分</div>
+        <!-- 重算時沿用同一行顯示狀態，避免多一行文字推擠下方版面 -->
+        <div
+          class="score-label"
+          :data-testid="isCorrecting ? 'correction-loading' : undefined"
+        >
+          {{ isCorrecting ? "重新計算中…" : "本餐評分" }}
+        </div>
         <div
           class="score-value"
           :style="{ color: scoreColor(scoreResult.totalScore) }"
+          data-testid="score-value"
         >
           {{ scoreResult.totalScore === null ? "—" : displayScore }}
         </div>
@@ -267,17 +365,39 @@ function foodTypeLabel(type: string | null): string {
           v-for="b in scoreResult.breakdown"
           :key="b.slot"
           class="breakdown-row"
+          :data-testid="`breakdown-row-${b.slot}`"
         >
           <span class="slot-label">第{{ numToChinese(b.slot) }}口</span>
           <span class="slot-food">{{ b.label ?? "（空）" }}</span>
           <span class="slot-right">
             <span v-if="b.isOther" class="tag-other">不計分</span>
-            <span class="slot-type">{{ foodTypeLabel(b.type) }}</span>
+            <FoodTypeEditor
+              :type="b.type"
+              :slot-number="b.slot"
+              :editable="authStore.isLoggedIn"
+              :disabled="isCorrecting || isSubmitting"
+              @change="handleTypeChange(b.slot, $event)"
+            />
           </span>
         </div>
       </div>
 
-      <div class="tips" v-if="scoreResult.tips.length > 0">
+      <p
+        v-if="!authStore.isLoggedIn && scoreResult.breakdown.length > 0"
+        class="correction-hint"
+        data-testid="guest-correction-hint"
+      >
+        分類不符合預期？登入後可修正分類
+      </p>
+      <p v-if="correctionError" class="error" data-testid="correction-error">
+        {{ correctionError }}
+      </p>
+
+      <div
+        class="tips"
+        v-if="scoreResult.tips.length > 0"
+        data-testid="meal-tips"
+      >
         <h4>建議</h4>
         <ul>
           <li v-for="(tip, i) in scoreResult.tips" :key="i">{{ tip }}</li>
@@ -315,12 +435,18 @@ function foodTypeLabel(type: string | null): string {
       </div>
 
       <div v-else class="record-list">
-        <div v-for="r in records" :key="r.id" class="record-card">
+        <div
+          v-for="r in records"
+          :key="r.id"
+          class="record-card"
+          data-testid="history-record"
+        >
           <div class="record-header">
             <span class="record-date">{{ formatDate(r.recordedAt) }}</span>
             <span
               class="record-score"
               :style="{ color: scoreColor(r.totalScore) }"
+              data-testid="history-record-score"
               >{{ r.totalScore }} 分</span
             >
           </div>
@@ -459,10 +585,10 @@ h3 {
   line-height: 1;
 }
 
+/* 不可加 overflow: hidden，否則會裁掉 FoodTypeEditor 往下展開的浮層選單 */
 .breakdown {
   background: var(--social-bg, #242424);
   border-radius: 10px;
-  overflow: hidden;
 }
 
 .breakdown-row {
@@ -477,10 +603,11 @@ h3 {
   border-bottom: none;
 }
 
+/* 用 min-width 而非 width：固定寬度剛好等於三個字時，加上全域 letter-spacing 會超出而換行 */
 .slot-label {
   font-size: var(--f14);
   color: var(--font-color);
-  width: 48px;
+  min-width: 48px;
   flex-shrink: 0;
 }
 .slot-food {
@@ -493,11 +620,7 @@ h3 {
   justify-content: flex-end;
   gap: 6px;
   flex-shrink: 0;
-  width: 96px;
-}
-.slot-type {
-  font-size: var(--f14);
-  color: var(--font-color);
+  min-width: 96px;
 }
 
 .tag-other {
@@ -507,6 +630,13 @@ h3 {
   color: #9ca3af;
   border-radius: 999px;
   white-space: nowrap;
+}
+
+.correction-hint {
+  margin: 0;
+  font-size: var(--f14);
+  color: var(--font-color);
+  text-align: right;
 }
 
 .tips {
@@ -731,7 +861,7 @@ h3 {
     margin-top: 8px;
   }
   .slot-label {
-    width: 36px;
+    min-width: 36px;
   }
   .breakdown-row {
     flex-wrap: wrap;

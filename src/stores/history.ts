@@ -36,6 +36,13 @@ export const useHistoryStore = defineStore('history', {
     prependRecord(record: IMealRecord) {
       this.records.unshift(record);
     },
+    updateRecord(record: IMealRecord) {
+      const index = this.records.findIndex((r) => r.id === record.id);
+      if (index !== -1) this.records[index] = record;
+    },
+    removeRecord(id: string) {
+      this.records = this.records.filter((r) => r.id !== id);
+    },
     reset() {
       this.$reset();
     },

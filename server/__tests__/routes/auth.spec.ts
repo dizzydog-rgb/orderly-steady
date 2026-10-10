@@ -15,6 +15,7 @@ vi.mock('../../db', () => ({
       delete: vi.fn(),
       deleteMany: vi.fn(),
     },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -24,11 +25,12 @@ vi.mock('../../services/authService', () => ({
   generateAccessToken: vi.fn().mockReturnValue('mock-access-token'),
   generateRefreshToken: vi.fn().mockReturnValue('mock-refresh-token'),
   verifyRefreshToken: vi.fn(),
+  verifyAccessToken: vi.fn(),
 }));
 
 import { app } from '../../app';
 import prisma from '../../db';
-import { comparePassword } from '../../services/authService';
+import { comparePassword, verifyAccessToken } from '../../services/authService';
 
 describe('POST /api/auth/register', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -185,5 +187,126 @@ describe('POST /api/auth/login', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.details[0].field).toBe('email');
+  });
+});
+
+const TOKEN_PAYLOAD = { userId: 'u1', email: 'user@example.com' };
+const EXISTING_USER = { id: 'u1', email: 'user@example.com', password: 'hashed-password', name: '小林' };
+
+describe('PATCH /api/auth/me', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(verifyAccessToken).mockReturnValue(TOKEN_PAYLOAD);
+  });
+
+  it('200 — updates the nickname', async () => {
+    vi.mocked(prisma.user.update).mockResolvedValue({
+      id: 'u1',
+      email: 'user@example.com',
+      name: '新名稱',
+    } as any);
+
+    const res = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ name: '新名稱' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.name).toBe('新名稱');
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'u1' }, data: { name: '新名稱' } })
+    );
+  });
+
+  it('400 — rejects a whitespace-only nickname', async () => {
+    const res = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ name: '   ' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.details[0].field).toBe('name');
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('401 — without an Authorization header', async () => {
+    const res = await request(app).patch('/api/auth/me').send({ name: '新名稱' });
+
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('PATCH /api/auth/password', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(verifyAccessToken).mockReturnValue(TOKEN_PAYLOAD);
+  });
+
+  it('200 — updates the hash and revokes refresh tokens on every device', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(EXISTING_USER as any);
+    vi.mocked(comparePassword).mockResolvedValue(true as never);
+    vi.mocked(prisma.$transaction).mockResolvedValue([] as any);
+
+    const res = await request(app)
+      .patch('/api/auth/password')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ currentPassword: 'password123', newPassword: 'newpassword456' });
+
+    expect(res.status).toBe(200);
+    expect(prisma.$transaction).toHaveBeenCalledOnce();
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'u1' }, data: { password: 'hashed-password' } })
+    );
+    expect(prisma.refreshToken.deleteMany).toHaveBeenCalledWith({ where: { userId: 'u1' } });
+  });
+
+  it('400 — wrong current password (never 401, which would trigger a token refresh)', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(EXISTING_USER as any);
+    vi.mocked(comparePassword).mockResolvedValue(false as never);
+
+    const res = await request(app)
+      .patch('/api/auth/password')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ currentPassword: 'wrongpassword', newPassword: 'newpassword456' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('目前密碼不正確');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('400 — new password identical to the current one', async () => {
+    const res = await request(app)
+      .patch('/api/auth/password')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ currentPassword: 'password123', newPassword: 'password123' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.details[0].field).toBe('newPassword');
+  });
+
+  it('400 — account created by the meals endpoint has no password yet', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      ...EXISTING_USER,
+      password: null,
+    } as any);
+
+    const res = await request(app)
+      .patch('/api/auth/password')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ currentPassword: 'password123', newPassword: 'newpassword456' });
+
+    expect(res.status).toBe(400);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('404 — user no longer exists', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+    const res = await request(app)
+      .patch('/api/auth/password')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ currentPassword: 'password123', newPassword: 'newpassword456' });
+
+    expect(res.status).toBe(404);
   });
 });

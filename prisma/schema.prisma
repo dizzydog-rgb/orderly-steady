@@ -35,11 +35,25 @@ model User {
   password      String?        // bcrypt hash；null = 由 meals endpoint 自動建立、尚未完成註冊的帳號
   records       MealRecord[]
   refreshTokens RefreshToken[]
+  foodOverrides UserFoodOverride[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([email])
+}
+
+// 使用者對食物類別的個人覆寫：優先於全域 FoodDictionary，只影響該使用者自己
+model UserFoodOverride {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String   @db.VarChar(100) // 食物名稱（已正規化）
+  type      FoodType // 使用者指定的食物類別
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, label]) // 同時作為高頻查詢 (userId, label) 的索引
 }
 
 model RefreshToken {
