@@ -8,6 +8,14 @@ export const FoodType = {
 
 export type FoodType = (typeof FoodType)[keyof typeof FoodType];
 
+// 後端（Prisma enum）回傳與接收的食物類別名稱；與上方前端即時計分用的縮寫值不同
+export type BackendFoodType =
+  | 'FIBER'
+  | 'PROTEIN'
+  | 'COMPLEX_CARB'
+  | 'SIMPLE_CARB'
+  | 'OTHER';
+
 export interface IMealItem {
   id: string;
   type: FoodType;
@@ -47,6 +55,21 @@ export interface IMealRecord {
   tips: string[] | null;
   recordedAt: string;
   foodItems: IFoodItemRecord[];
+}
+
+export interface IUpdateFoodTypeRequest {
+  type: BackendFoodType;
+}
+
+export interface IUpsertFoodOverrideRequest {
+  label: string;
+  type: BackendFoodType;
+}
+
+// record 為 null 代表修正後全為「其他」、無法計分，該筆紀錄已被刪除
+export interface IFoodTypeCorrectionResponse {
+  record: IMealRecord | null;
+  analysis: IScoringResult;
 }
 
 export interface IUpdateNicknameRequest {

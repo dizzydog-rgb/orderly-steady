@@ -79,7 +79,7 @@ ANTHROPIC_API_KEY=<Anthropic API 金鑰>
 
 ## 5. 開發流程
 
-每次進行功能修改或新增前，先依照 `docs/plans/2026-04-26-ecpay-full-integration(as structure model).md` 的格式，在 `docs/plans/` 建立一份今日計畫（`YYYY-MM-DD-<feature-name>.md`），與使用者確認計畫內容後才開始撰寫程式碼；功能完成後移至 `docs/plans/archive/`。
+每次進行功能修改或新增前，先依照 `docs/plans/_template.md` 的格式，在 `docs/plans/` 建立一份今日計畫（`YYYY-MM-DD-<feature-name>.md`），與使用者確認計畫內容後才開始撰寫程式碼；功能完成後移至 `docs/plans/archive/`。
 
 ## 6. 關鍵開發規則
 

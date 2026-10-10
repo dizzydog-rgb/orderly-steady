@@ -9,6 +9,7 @@ import {
   verifyRefreshToken,
 } from "../services/authService";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { isRateLimitDisabled } from "../middleware/rateLimit";
 import { validate } from "../middleware/validate";
 import {
   RegisterSchema,
@@ -28,10 +29,6 @@ const REFRESH_COOKIE_OPTIONS = {
   maxAge: REFRESH_TOKEN_TTL_MS,
   path: "/api/auth",
 };
-
-// E2E 測試需要反覆重跑，IP 計數會在幾輪內用完額度；僅開發環境可用環境變數旁路
-const isRateLimitDisabled = () =>
-  process.env.NODE_ENV !== "production" && process.env.RATE_LIMIT_DISABLED === "true";
 
 const nicknameRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000,

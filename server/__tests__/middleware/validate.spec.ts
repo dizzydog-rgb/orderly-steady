@@ -6,7 +6,11 @@ import {
   UpdateNicknameSchema,
   ChangePasswordSchema,
 } from '../../schemas/auth.schemas';
-import { CreateMealSchema } from '../../schemas/meals.schemas';
+import {
+  CreateMealSchema,
+  UpdateFoodTypeSchema,
+  UpsertFoodOverrideSchema,
+} from '../../schemas/meals.schemas';
 
 function makeReqRes(body: unknown) {
   const req: any = { body };
@@ -129,5 +133,41 @@ describe('validate middleware — ChangePasswordSchema', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json.mock.calls[0][0].details[0].field).toBe('newPassword');
+  });
+});
+
+describe('validate middleware — food type correction schemas', () => {
+  it('calls next() for a known food type', () => {
+    const { req, res, next } = makeReqRes({ type: 'PROTEIN' });
+    validate(UpdateFoodTypeSchema)(req, res, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with field="type" for an unknown food type', () => {
+    const { req, res, next } = makeReqRes({ type: 'F' });
+    validate(UpdateFoodTypeSchema)(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].details[0].field).toBe('type');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with field="label" when the label is only full-width spaces', () => {
+    const { req, res, next } = makeReqRes({ label: '　　', type: 'PROTEIN' });
+    validate(UpsertFoodOverrideSchema)(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].details[0].field).toBe('label');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with field="label" when the label exceeds 100 chars', () => {
+    const { req, res, next } = makeReqRes({ label: 'a'.repeat(101), type: 'PROTEIN' });
+    validate(UpsertFoodOverrideSchema)(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].details[0].field).toBe('label');
   });
 });

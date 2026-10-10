@@ -57,7 +57,7 @@ MYSQL_ROOT_PASSWORD=<pw>     # docker-compose.yml 以此初始化 MySQL；須與
 **all_pair 加權矩陣演算法**（三分支決策樹）：
 
 - **m=0**（全為 OTHER）：`totalScore: null`，不寫入 DB
-- **m=1**（單一可評分食物）：SIMPLE_CARB → 20 分；其餘 → 60 分；tips 硬編碼均衡建議
+- **m=1**（單一可評分食物）：SIMPLE_CARB → 20 分；COMPLEX_CARB → 40 分；FIBER / PROTEIN → 60 分；tips 硬編碼均衡建議
 - **m≥2**：雙重迴圈所有 pair (i,j)，依距離加權（相鄰 ×1.5，跨越 ×1.0），查 SCORE_MATRIX（0–10）計算加權分比；SIMPLE_CARB index=0 懲罰 -10，index=1 懲罰 -10
 
 SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodType value `'F'`/`'P'`/`'CC'`/`'SC'`）：
@@ -78,6 +78,7 @@ SCORE_MATRIX（前者→後者，後端用 Prisma enum 名稱，前端用 FoodTy
 - Refresh token 採旋轉策略（每次 refresh 同時換發新 refresh token，舊的失效）
 - Refresh token 存於獨立的 `RefreshToken` 資料表（非 User 欄位），支援多裝置同時登入；logout 只撤銷當前裝置的 token
 - `POST /api/meals` **無需登入**：以 `email` 欄位 upsert user（password=null）；`GET /api/meals/:userId` 才需 Bearer token
+- `POST /api/meals` 使用 `optionalAuthMiddleware`：未帶 `Authorization` 視為訪客；**帶了但無效則回 401**（不可靜默當成訪客，否則 token 過期的登入者不會套用個人分類覆寫，`fetchWithAuth` 也不會 refresh）
 - `POST /api/auth/register`：若 email 已存在且 `password=null`（meals endpoint 自動建立的帳號），允許補全密碼完成註冊（回傳 201）；若 `password` 已設定則回傳 409
 
 **Auth API 端點**（`/api/auth/*`）：
@@ -105,7 +106,8 @@ Name    : E2E 測試員
 - 每個 test 的 `beforeEach` 都會透過 Prisma 刪除重建此帳號（密碼變更測試會改掉密碼，必須逐案例重置）。
 - `resetE2ETestUser()` 會檢查 `DATABASE_URL` 的 host 必須是 `localhost`／`127.0.0.1`，避免誤對遠端資料庫執行。
 - 與 `prisma/seedDemo.ts` 的示範帳號（`demo@example.com`）刻意分開：示範帳號用於圖表資料，密碼不應被測試改動。
-- 跑 E2E 前請以 `RATE_LIMIT_DISABLED=true npm run dev:server` 啟動後端，否則連跑數輪會觸發密碼端點的 5 req/15min 限制而收到 429。此旁路僅在 `NODE_ENV !== production` 時有效。
+- 跑 E2E 前請以 `RATE_LIMIT_DISABLED=true npm run dev:server` 啟動後端，否則連跑數輪會觸發密碼端點的 5 req/15min 限制而收到 429；`e2e/food-correction.spec.ts` 一輪就會用完 `POST /api/meals` 的 10 req/min，一分鐘內跑第二輪同樣會 429。此旁路僅在 `NODE_ENV !== production` 時有效。
+- 修正分類的 E2E 使用 `E2E_FOODS` 測試食物，由 `seedE2EFoodDictionary()` 預先寫入 `FoodDictionary`（不呼叫 Claude API），`globalTeardown` 會清除；訪客流程使用 `E2E_GUEST_EMAIL`，隨 `resetE2ETestUser()` 一併刪除。
 
 ### 前端 Composables
 
@@ -114,7 +116,7 @@ Name    : E2E 測試員
 
 ### 歷史紀錄 Store
 
-`src/stores/history.ts`：`hasFetched` 旗標防止重複請求；新增餐點後呼叫 `prependRecord(record)` 做樂觀 UI 更新，不重新拉取。
+`src/stores/history.ts`：`hasFetched` 旗標防止重複請求；新增餐點後呼叫 `prependRecord(record)` 做樂觀 UI 更新，不重新拉取。修正食物分類後以 `updateRecord(record)` 更新該筆，或在修正後無法計分時以 `removeRecord(id)` 移除。
 
 ### ScoreTrendChart 組件
 
@@ -126,11 +128,25 @@ Name    : E2E 測試員
 分類結果寫入 `FoodDictionary` 資料表作為快取（label 唯一索引）；下次相同食物名稱直接從 DB 讀取，跳過 AI 呼叫（log 顯示 `[AI] Cache hit`）。
 `DATABASE_URL` 須含 `?charset=utf8mb4` 確保中文 label 正確儲存。管理端點 `DELETE /api/food-dictionary`（全清）與 `DELETE /api/food-dictionary/:label`（單筆）可清除錯誤快取，均需 Bearer token。
 
+食物名稱一律先經 `normalizeLabel`（`server/services/foodLabel.ts`，NFKC + trim）再作為查詢鍵。
+
+### 個人分類覆寫（使用者修正 AI 分類）
+
+登入者可在評分結果上修正食物類別。修正寫入 `UserFoodOverride`（**只影響該使用者**），**不可**寫入全域 `FoodDictionary`——字典只由 AI 寫入，不同使用者對同一食物可有不同分類。
+
+- **查詢順序**（`getFoodType(label, userId?)`）：個人覆寫 → `FoodDictionary` → Claude API。只有 token 的 `userId` 與該 email 的使用者相符時才傳入 `userId`；訪客只憑 email 不套用任何人的覆寫。
+- **`PATCH /api/meals/:recordId/items/:sequenceIndex`**（Bearer）：同一 transaction 內 upsert 覆寫、更新 `FoodItem.type`、重算 `totalScore`／`tips`。重算後全為 OTHER 時**刪除該筆紀錄**並回傳 `record: null`（`totalScore` 不允許 null）。
+- **`PUT /api/food-overrides`**（Bearer）：當餐全為 OTHER、沒有紀錄可 PATCH 時使用；前端存完覆寫後以相同食物重送 `POST /api/meals`。
+- 兩個端點共用 20 req/min（`server/middleware/rateLimit.ts`）。
+- 只影響當餐與之後送出的餐點，不回溯重算歷史紀錄。
+- 前端：`src/components/FoodTypeEditor.vue`（類別文字＋編輯圖示＋絕對定位的浮層選單）。`HomeView.vue` 的 `.breakdown` **不可加 `overflow: hidden`**，否則會裁掉選單。
+
 ### 資料模型（Prisma）
 
 `User` → `MealRecord`（含 totalScore、tips JSON）→ `FoodItem`（含 sequenceIndex）。
 `User` → `RefreshToken`（含 token、expiresAt），支援多裝置登入。
-`MealRecord` 有 `(userId, recordedAt)` 複合索引，`FoodItem` 有 `mealRecordId` 索引，`RefreshToken` 有 `token` unique 索引與 `userId` 索引。
+`User` → `UserFoodOverride`（含 label、type），個人分類覆寫。
+`MealRecord` 有 `(userId, recordedAt)` 複合索引，`FoodItem` 有 `mealRecordId` 索引，`RefreshToken` 有 `token` unique 索引與 `userId` 索引，`UserFoodOverride` 有 `(userId, label)` unique 索引。
 
 ## 關鍵規則
 
@@ -138,7 +154,7 @@ Name    : E2E 測試員
 - **組件化設計**：UI 組件與邏輯組件分離，遵循單一職責原則
 - **GSAP 動畫**：僅在 `onMounted` 觸發，使用 `gsap.context()` 清理；依評分區間差異化——80+ 彈跳綠光、60-79 淡入黃示、40-59 震動黃綠、20-39 震動橘警告、<20 強烈震動紅色嚴重警報
 - **Loading State**：串接 AI API 及高頻搜尋一律實作 Loading State + Debounce 防抖
-- **開發前必須建立計畫**：每次進行功能修改或新增前，先依照 `docs/plans/2026-04-26-ecpay-full-integration(as structure model).md` 的格式，在 `docs/plans/` 建立一份今日計畫（`YYYY-MM-DD-<feature-name>.md`），與使用者確認計畫內容後才開始撰寫程式碼；功能完成後移至 `docs/plans/archive/`
+- **開發前必須建立計畫**：每次進行功能修改或新增前，先依照 `docs/plans/_template.md` 的格式，在 `docs/plans/` 建立一份今日計畫（`YYYY-MM-DD-<feature-name>.md`），與使用者確認計畫內容後才開始撰寫程式碼；功能完成後移至 `docs/plans/archive/`
 
 ## 必要遵守項目
 

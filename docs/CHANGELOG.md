@@ -2,6 +2,35 @@
 
 所有對「Orderly & Steady」專案的重要變更都將記錄在此文件中。
 
+## [0.9.5] - 2026-10-10
+
+### Added
+- **修正食物分類（個人覆寫）**：登入者可在評分結果上自行修正 AI 的食物分類，系統立即重算本餐分數並記住選擇，之後輸入同一食物時自動套用。
+  - 新增 `UserFoodOverride` 資料表（`(userId, label)` 唯一鍵，migration `add_user_food_override`）。分類查詢順序改為 **個人覆寫 → 全域 `FoodDictionary` → Claude API**；全域字典維持只由 AI 寫入，不同使用者對同一食物的分類互不影響。
+  - `PATCH /api/meals/:recordId/items/:sequenceIndex`：同一 transaction 內 upsert 覆寫、更新 `FoodItem.type`、重算 `totalScore`／`tips`；重算後全為 OTHER 時刪除該筆紀錄並回傳 `record: null`（`totalScore` 欄位不允許 null，與 POST 的 m=0 不寫入一致）。
+  - `PUT /api/food-overrides`：當餐全為「其他」沒有紀錄可修改時，先存覆寫，前端再以相同食物重送 `POST /api/meals`。
+  - 兩個新端點共用速率限制 20 req/min（`server/middleware/rateLimit.ts`）。
+  - `server/services/foodLabel.ts`：`normalizeLabel`（NFKC + trim），字典與覆寫的查詢鍵共用，全形／半形視為同一食物。
+  - `src/components/FoodTypeEditor.vue`：類別文字旁的編輯圖示，點擊後以**絕對定位的浮層選單**顯示五個類別，不推擠其他元件；Esc／點選單外／Tab 離開會收合，方向鍵可移動，同一時間只開一個。
+  - `src/stores/history.ts`：新增 `updateRecord()`、`removeRecord()`，修正後不重新拉取歷史紀錄。
+  - `src/types/index.ts`：新增 `BackendFoodType`、`IUpdateFoodTypeRequest`、`IUpsertFoodOverrideRequest`、`IFoodTypeCorrectionResponse`。
+  - 訪客不顯示編輯圖示，改顯示「登入後可修正分類」。
+- **測試**：新增 `server/__tests__/routes/meals.spec.ts`（17 項）與 4 項 schema 驗證測試；新增 `e2e/food-correction.spec.ts`（7 個情境）。E2E 測試食物由 `seedE2EFoodDictionary()` 預先寫入字典，不呼叫 Claude API。
+
+### Changed
+- **`POST /api/meals` 改為選擇性驗證**（`optionalAuthMiddleware`）：未帶 `Authorization` 仍視為訪客放行；**帶了但 Token 無效或過期時改回 401**（原本一律放行）。原因是 access token 僅 15 分鐘，若靜默放行，登入者的覆寫會不生效且 `fetchWithAuth` 不會 refresh。
+- `POST /api/meals`：食物名稱正規化後為空（例如只有全形空白）改回 400。
+- `mealsRateLimit` 加上 `RATE_LIMIT_DISABLED` 旁路（僅 `NODE_ENV !== production` 有效），`isRateLimitDisabled` 由 `server/routes/auth.ts` 移至 `server/middleware/rateLimit.ts` 共用。
+- `src/views/HomeView.vue`：`.breakdown` 移除 `overflow: hidden`（會裁掉浮層選單）；重算期間「本餐評分」標題改顯示「重新計算中…」並停用送出按鈕與編輯圖示；補上 E2E 用的 `data-testid`。
+- 測試數量：Vitest 63 → 84；Playwright 6 → 13。
+- `CLAUDE.md`、`docs/DEVELOPMENT.md`：計畫範本的引用路徑更新為更名後的 `docs/plans/_template.md`。
+
+### Fixed
+- 首頁送出失敗時（例如 429）只顯示籠統的「提交失敗，請再試一次」：前端讀取的是 `message` 欄位，但後端錯誤格式為 `{ error, details }`。改為顯示後端回傳的訊息。
+- ≤480px 時評分明細的「第一口／第二口／第三口」會斷成兩行：`.slot-label` 固定寬度 36px 剛好等於三個 12px 的字，加上全域 `letter-spacing` 後超出 0.54px。`width` 改為 `min-width`，欄位會撐到剛好容納文字。
+
+---
+
 ## [0.9.4] - 2026-10-09
 
 ### Added

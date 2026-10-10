@@ -28,7 +28,7 @@
   - 🟢 基礎架構建立
   - 🟢 Docker 容器化資料庫
   - 🟢 Prisma Schema 設計與 Migration（User、MealRecord、FoodItem、FoodDictionary）
-  - 🟢 `POST /api/meals` — 建立飲食紀錄（含 email upsert、AI 分類、評分計算、寫入 DB；rate limit 10 req/min）
+  - 🟢 `POST /api/meals` — 建立飲食紀錄（含 email upsert、AI 分類、評分計算、寫入 DB；rate limit 10 req/min；登入者套用個人分類覆寫）
   - 🟢 `GET /api/meals/:userId` — 查詢使用者歷史紀錄（依時間倒序，含 foodItems；需 Bearer Token 且只能查詢自己）
   - 🟢 FoodDictionary 快取機制（AI 分類結果快取至 DB，避免重複呼叫）
   - 🟢 食物資料庫初始化（50 筆常見食物預設分類）
@@ -80,6 +80,20 @@
   - 🟢 DB 快取機制（`FoodDictionary` label 唯一索引）
   - 🟢 `DELETE /api/food-dictionary` — 全清快取（需 Bearer Token）
   - 🟢 `DELETE /api/food-dictionary/:label` — 清除單筆錯誤快取（需 Bearer Token）
+- **狀態**: 🟢 已完成
+
+## 5.1 修正食物分類（個人覆寫）(Food Type Correction)
+- **行為描述**: 登入者在評分結果的每一列類別文字旁會看到編輯圖示，點擊後以浮層選單（不推擠其他元件）改選類別；系統立即重算本餐分數，並記住這個選擇，之後再輸入同一食物時自動套用。覆寫只影響使用者自己，不同使用者可對同一食物有不同分類，全域 `FoodDictionary` 不受影響。
+- **目前進度**:
+  - 🟢 `UserFoodOverride` 資料表（`(userId, label)` 唯一鍵）；分類查詢順序：個人覆寫 → 全域字典 → Claude API
+  - 🟢 `PATCH /api/meals/:recordId/items/:sequenceIndex` — 修正當餐類別、寫入覆寫、重算分數（同一 transaction）
+  - 🟢 `PUT /api/food-overrides` — 當餐全為「其他」沒有紀錄時，先存覆寫再重送
+  - 🟢 `POST /api/meals` 選擇性驗證：登入者套用個人覆寫；訪客只憑 email 不套用任何人的覆寫
+  - 🟢 `FoodTypeEditor.vue` — 類別文字＋編輯圖示＋浮層選單（Esc／點選單外收合、方向鍵移動、同時只開一個）
+  - 🟢 修正後全為「其他」時移除該筆紀錄（與「全為其他不存檔」一致）
+  - 🟢 食物名稱正規化（NFKC + trim），全形／半形視為同一食物
+  - 🟢 訪客不顯示編輯圖示，改顯示「登入後可修正分類」
+- **範圍限制**: 只能修正剛送出的那一餐；不回溯重算過去的歷史紀錄；尚無「管理我的覆寫」頁面。
 - **狀態**: 🟢 已完成
 
 ## 6. 使用者介面 (UI / UX)

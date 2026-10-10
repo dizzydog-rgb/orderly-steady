@@ -20,7 +20,7 @@ orderly-steady/
 │   ├── router/index.ts         # Vue Router + beforeEach guard（未登入自動 refresh，失敗跳 /login）
 │   ├── stores/
 │   │   ├── auth.ts             # Pinia auth store（user / accessToken / _refreshPromise 去重鎖）
-│   │   └── history.ts          # Pinia history store（hasFetched / prependRecord 樂觀更新）
+│   │   └── history.ts          # Pinia history store（hasFetched / prependRecord・updateRecord・removeRecord 樂觀更新）
 │   ├── composables/
 │   │   ├── useGlucoseScore.ts  # HomeView 核心：mealSequence（最多 3 項）、scoreResult computed
 │   │   ├── useTheme.ts         # System / Light / Dark 三態，matchMedia 追蹤 OS 偏好
@@ -28,6 +28,7 @@ orderly-steady/
 │   ├── components/
 │   │   ├── NavBar.vue          # 品牌 logo、導覽連結、≤480px 漢堡選單
 │   │   ├── ScoreTrendChart.vue # Chart.js 折線圖 + backgroundBandsPlugin 分數色帶；支援今日 / 7 / 14 / 30 / 90 / 180 天範圍切換
+│   │   ├── FoodTypeEditor.vue  # 評分結果列的類別文字 + 編輯圖示 + 浮層選單（修正食物分類）
 │   │   ├── ThemeSwitcher.vue   # 三態膠囊控件（含滑動指示器動畫）
 │   │   └── LangSwitcher.vue    # 語言切換按鈕組
 │   ├── utils/fetchWithAuth.ts  # 統一 API 入口；401 → refresh → retry，失敗跳 /login
@@ -45,21 +46,24 @@ orderly-steady/
 │   ├── index.ts                # 入口：import app → listen，dotenv 初始化
 │   ├── routes/
 │   │   ├── auth.ts             # register / login / refresh / logout / me
-│   │   ├── meals.ts            # POST /api/meals（rate limit 10/min）、GET /api/meals/:userId
+│   │   ├── meals.ts            # POST /api/meals（rate limit 10/min）、PATCH …/items/:sequenceIndex（修正分類）、GET /api/meals/:userId
+│   │   ├── foodOverrides.ts    # PUT /api/food-overrides（個人分類覆寫）
 │   │   └── foodDictionary.ts   # DELETE /api/food-dictionary（全清 / 單筆）
 │   ├── schemas/
 │   │   ├── auth.schemas.ts     # RegisterSchema / LoginSchema (Zod + z.infer 型別匯出)
-│   │   └── meals.schemas.ts    # CreateMealSchema (Zod + z.infer 型別匯出)
+│   │   └── meals.schemas.ts    # CreateMealSchema / UpdateFoodTypeSchema / UpsertFoodOverrideSchema
 │   ├── services/
-│   │   ├── ai.ts               # Claude Haiku 分類 + FoodDictionary DB 快取
+│   │   ├── ai.ts               # 分類查詢（個人覆寫 → FoodDictionary 快取 → Claude Haiku）、upsertFoodOverride
+│   │   ├── foodLabel.ts        # normalizeLabel（NFKC + trim），字典與覆寫的查詢鍵共用
 │   │   ├── scoringAlgorithm.ts # 後端評分（寫入 DB 前最終計算）
 │   │   └── authService.ts      # JWT 產生與驗證、bcrypt
 │   ├── middleware/
-│   │   ├── authMiddleware.ts   # Bearer token 驗證，注入 req.user
+│   │   ├── authMiddleware.ts   # Bearer token 驗證，注入 req.user；optionalAuthMiddleware 供訪客／登入者共用端點
+│   │   ├── rateLimit.ts        # isRateLimitDisabled（E2E 旁路）、修正分類共用的 limiter
 │   │   └── validate.ts         # 通用 Zod validate() middleware factory
-│   ├── __tests__/              # 後端測試（v0.9.2，共 24 個 test cases）
+│   ├── __tests__/              # 後端測試（共 63 個 test cases）
 │   │   ├── middleware/         # authMiddleware.spec.ts / validate.spec.ts
-│   │   ├── routes/             # auth.spec.ts
+│   │   ├── routes/             # auth.spec.ts / meals.spec.ts
 │   │   └── services/           # scoringAlgorithm.spec.ts
 │   └── scripts/
 │       └── clearFoodDictionary.ts
@@ -68,9 +72,10 @@ orderly-steady/
 │   └── seed.ts                 # 50 筆常見食物預設分類
 ├── e2e/                        # Playwright E2E 測試
 │   ├── settings.spec.ts        # 帳號設定頁（名稱／密碼變更）
-│   ├── testAccount.ts          # 專用測試帳號常數與 resetE2ETestUser()（含 localhost 防護）
+│   ├── food-correction.spec.ts # 修正食物分類（個人覆寫、浮層選單）
+│   ├── testAccount.ts          # 專用測試帳號常數、resetE2ETestUser()、測試用 FoodDictionary 預置（含 localhost 防護）
 │   ├── global-setup.ts         # 測試開始前建立測試帳號
-│   ├── global-teardown.ts      # 收斂 Prisma 連線
+│   ├── global-teardown.ts      # 清除測試用 FoodDictionary、收斂 Prisma 連線
 │   └── seedTestAccount.ts      # 手動重置腳本（npm run seed:e2e）
 ├── playwright.config.ts        # testDir=e2e、baseURL=5173、workers=1（共用測試帳號需序列化）
 └── docker-compose.yml
@@ -88,7 +93,18 @@ User
   password      String?        (bcrypt hash；null = 由 meals endpoint 自動建立、尚未完成註冊)
   records       MealRecord[]
   refreshTokens RefreshToken[]
+  foodOverrides UserFoodOverride[]
   @@index([email])
+
+UserFoodOverride                 ← 個人分類覆寫，優先於 FoodDictionary，只影響該使用者
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(..., onDelete: Cascade)
+  label     String   @db.VarChar(100)   (已正規化的食物名稱)
+  type      FoodType
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId, label])      ← 同時作為 (userId, label) 查詢索引
 
 RefreshToken
   id        String   @id @default(uuid())
@@ -175,6 +191,7 @@ FoodType enum: FIBER | PROTEIN | COMPLEX_CARB | SIMPLE_CARB | OTHER
 - **`fetchWithAuth`**：所有需登入的請求統一走此工具；自動附加 Bearer header，401 時觸發 refresh → retry；refresh 失敗則清除狀態並跳 `/login`。
 - **`_refreshPromise`**：去重鎖，防止多個並發請求同時觸發 refresh。
 - **`POST /api/meals` 無需登入**：以 `email` 欄位 upsert user，允許未登入訪客快速試用。
+- **`optionalAuthMiddleware`**（`POST /api/meals` 使用）：未帶 `Authorization` 視為訪客放行；有帶但無效則回 401。若把無效 token 靜默當成訪客，access token 過期的登入者就不會套用個人分類覆寫，且 `fetchWithAuth` 收不到 401 也不會 refresh。
 
 ---
 
@@ -182,6 +199,12 @@ FoodType enum: FIBER | PROTEIN | COMPLEX_CARB | SIMPLE_CARB | OTHER
 
 ```
 使用者輸入食物名稱
+       ↓
+normalizeLabel（NFKC + trim）
+       ↓
+已登入且 token 屬於此 email？
+  └─ YES → UserFoodOverride 查詢（(userId, label) 唯一鍵）
+              └─ 有覆寫 → 直接回傳 type（log: [AI] User override）
        ↓
 FoodDictionary DB 查詢（label 唯一索引）
        ↓
@@ -197,6 +220,22 @@ FoodDictionary DB 查詢（label 唯一索引）
 ```
 
 模型：`claude-haiku-4-5-20251001`，`max_tokens: 20`，system prompt 要求只回傳 5 個英文代號之一。
+
+### 6.1 個人分類覆寫
+
+AI 分類結果永久快取於全域 `FoodDictionary`，分錯時使用者無從補救；部分「錯誤」其實是見解差異（例如 prompt 將水果列為精緻碳水）。因此讓登入者自行修正，但寫入的是 `UserFoodOverride` 而非全域字典：
+
+- **互不影響**：A 把蘋果改成複合碳水、B 改成纖維，兩者並存，沒有衝突要解決；刷分或誤改也只影響自己。
+- **全域字典只由 AI 寫入**，使用者操作不會改動它。
+- **訪客不套用**：`POST /api/meals` 只憑 email 就能送出，因此只有 token 的 `userId` 與該 email 的使用者相符時才查覆寫。
+- **只影響當餐與未來**：不回溯重算過去的紀錄。
+
+修正當餐的兩條路徑（`HomeView.handleTypeChange`）：
+
+| 情況 | 流程 |
+|------|------|
+| 當餐已有紀錄 | `PATCH /api/meals/:recordId/items/:sequenceIndex` — 同一 transaction 內 upsert 覆寫、更新 `FoodItem.type`、重算並更新 `totalScore`／`tips`；若重算後全為 OTHER 則刪除紀錄 |
+| 當餐全為 OTHER（m=0，沒有紀錄） | `PUT /api/food-overrides` 存覆寫 → 以相同食物重送 `POST /api/meals`，走既有流程建立紀錄 |
 
 ---
 
@@ -220,6 +259,14 @@ fetchWithAuth POST /api/meals
 historyStore.prependRecord(record)  ← 樂觀更新
        ↓
 ScoreTrendChart 自動更新（computed from store.records）
+       ↓
+（登入者修正分類）FoodTypeEditor emit change
+       ↓
+fetchWithAuth PATCH /api/meals/:recordId/items/:sequenceIndex
+       ↓
+回傳 { record | null, analysis }
+       ↓
+historyStore.updateRecord(record) 或 removeRecord(id)  ← 不重新拉取
 ```
 
 ---

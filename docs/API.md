@@ -299,7 +299,13 @@ Authorization: Bearer <accessToken>
 
 送出一次進食紀錄。系統透過 AI 自動分類食物種類，計算血糖穩定得分後寫入資料庫。
 
-**認證需求**：無（以 `email` 識別使用者；若 email 不存在會自動建立未完整註冊的帳號）
+**認證需求**：選擇性（以 `email` 識別使用者；若 email 不存在會自動建立未完整註冊的帳號）
+
+- **不帶 `Authorization` header**：視為訪客，分類只查全域 `FoodDictionary` 與 AI。
+- **帶有效 Token，且 Token 的使用者即為此 `email`**：優先套用該使用者的[個人分類覆寫](#food-overrides-端點)。
+- **帶了 Token 但無效或過期**：回 `401`（不會被當成訪客），讓前端 refresh 後重試。
+
+**分類查詢順序**：個人覆寫（僅登入者）→ 全域 `FoodDictionary` 快取 → Claude API。食物名稱會先正規化（NFKC + trim，全形／半形視為相同）再查詢。
 
 **速率限制**：每分鐘最多 10 次請求（超過回 `429`）
 
@@ -368,9 +374,94 @@ Authorization: Bearer <accessToken>
 
 | 狀態碼 | 說明 |
 |--------|------|
-| 400 | email 格式錯誤、foods 陣列為空、超過 3 項、食物名稱為空或超過 100 字 |
+| 400 | email 格式錯誤、foods 陣列為空、超過 3 項、食物名稱為空（含正規化後為空，例如只有全形空白）或超過 100 字 |
+| 401 | 帶了 `Authorization` header 但 Token 無效或過期 |
 | 429 | 超過速率限制（10 次/分鐘） |
 | 500 | AI 分類服務或資料庫錯誤 |
+
+---
+
+### PATCH /api/meals/:recordId/items/:sequenceIndex
+
+修正某筆進食紀錄中單一食物的類別。在同一個 transaction 內完成三件事：更新該食物的類別、寫入使用者的[個人分類覆寫](#food-overrides-端點)、重算該餐分數與建議。**只能修改自己的紀錄。**
+
+**認證需求**：`Authorization: Bearer <accessToken>`
+
+**速率限制**：每分鐘最多 20 次請求（與 `PUT /api/food-overrides` 共用額度）
+
+**路徑參數**
+
+| 參數 | 說明 |
+|------|------|
+| recordId | 進食紀錄 ID |
+| sequenceIndex | 食物的進食順序，從 0 開始（第一口為 0） |
+
+**Request Body**
+
+| 欄位 | 型別 | 必填 | 說明 |
+|------|------|------|------|
+| type | string | 是 | [FoodType 枚舉值](#foodtype-枚舉值)之一 |
+
+```json
+{ "type": "PROTEIN" }
+```
+
+**成功回應** `200 OK`
+
+`record` 為更新後的完整紀錄（格式同 `POST /api/meals`），`analysis` 為重算後的評分結果。
+
+```json
+{
+  "record": {
+    "id": "clxyz456def",
+    "userId": "clxyz123abc",
+    "totalScore": 60,
+    "tips": ["請加入膳食纖維、複合碳水以達到飲食均衡。"],
+    "recordedAt": "2025-06-24T08:30:00.000Z",
+    "createdAt": "2025-06-24T08:30:01.000Z",
+    "updatedAt": "2025-06-24T08:31:12.000Z",
+    "foodItems": [
+      { "id": "fi001", "type": "PROTEIN", "label": "雞胸肉", "sequenceIndex": 0 }
+    ]
+  },
+  "analysis": {
+    "totalScore": 60,
+    "scorableCount": 1,
+    "tips": ["請加入膳食纖維、複合碳水以達到飲食均衡。"],
+    "breakdown": [
+      { "slot": 1, "label": "雞胸肉", "type": "PROTEIN", "isOther": false }
+    ]
+  }
+}
+```
+
+**修正後全部食物皆為 OTHER** `200 OK`
+
+無法計分時比照 `POST /api/meals` 不保留紀錄：**該筆紀錄會被刪除**，`record` 為 `null`。個人覆寫仍會寫入。
+
+```json
+{
+  "record": null,
+  "analysis": {
+    "totalScore": null,
+    "scorableCount": 0,
+    "tips": ["未記錄任何可評分食物"],
+    "breakdown": [
+      { "slot": 1, "label": "神秘食物", "type": "OTHER", "isOther": true }
+    ]
+  }
+}
+```
+
+**錯誤回應**
+
+| 狀態碼 | 說明 |
+|--------|------|
+| 400 | `type` 不是合法的 FoodType |
+| 401 | Token 無效或過期 |
+| 403 | 該筆紀錄不屬於登入帳號（不會寫入任何資料） |
+| 404 | 紀錄不存在，或該 `sequenceIndex` 沒有食物 |
+| 429 | 超過速率限制（20 次/分鐘） |
 
 ---
 
@@ -419,9 +510,56 @@ Authorization: Bearer <accessToken>
 
 ---
 
+## Food Overrides 端點
+
+個人分類覆寫（`UserFoodOverride` 資料表）讓使用者自行決定某個食物的類別。覆寫**只影響該使用者自己**，優先於全域 `FoodDictionary`；不同使用者可以把同一食物設成不同類別，互不影響，全域字典也不會被使用者操作改動。
+
+覆寫只套用在**之後**送出的餐點，不會回溯重算過去的紀錄。
+
+### PUT /api/food-overrides
+
+新增或更新目前使用者對某食物的分類（同一食物重複呼叫會覆蓋先前的設定）。
+
+一般情況下修正分類應使用 `PATCH /api/meals/:recordId/items/:sequenceIndex`（會同時寫入覆寫並重算當餐）。本端點用於**當餐全為 OTHER、沒有紀錄可修改**的情況：先存覆寫，再以相同食物重送 `POST /api/meals` 建立紀錄。
+
+**認證需求**：`Authorization: Bearer <accessToken>`
+
+**速率限制**：每分鐘最多 20 次請求（與 `PATCH /api/meals/:recordId/items/:sequenceIndex` 共用額度）
+
+**Request Body**
+
+| 欄位 | 型別 | 必填 | 說明 |
+|------|------|------|------|
+| label | string | 是 | 食物名稱，1–100 字元；儲存前會正規化（NFKC + trim） |
+| type | string | 是 | [FoodType 枚舉值](#foodtype-枚舉值)之一 |
+
+```json
+{ "label": "雞胸肉", "type": "PROTEIN" }
+```
+
+**成功回應** `200 OK`
+
+```json
+{
+  "override": { "label": "雞胸肉", "type": "PROTEIN" }
+}
+```
+
+**錯誤回應**
+
+| 狀態碼 | 說明 |
+|--------|------|
+| 400 | `label` 為空（含正規化後為空）或超過 100 字、`type` 不是合法的 FoodType |
+| 401 | Token 無效或過期 |
+| 429 | 超過速率限制（20 次/分鐘） |
+
+---
+
 ## Food Dictionary 端點
 
 這兩個端點用於管理 AI 食物分類快取（`FoodDictionary` 資料表）。當 AI 分類出現錯誤結果時可用於清除快取，下次請求將重新呼叫 AI。
+
+> 這是**全域**快取，影響所有使用者。使用者想修正自己看到的分類，應使用上方的個人分類覆寫。
 
 ### DELETE /api/food-dictionary
 
