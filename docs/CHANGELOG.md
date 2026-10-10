@@ -30,6 +30,10 @@
   - `docs/DEVELOPMENT.md`：環境變數補上 `MYSQL_ROOT_PASSWORD`。
   - 順帶修正：原 `CLAUDE.md` 寫 `ScoreTrendChart`「需 ≥2 筆才渲染折線圖」、範圍為 7/14/30/90/180 天，與程式碼不符（實際為範圍內有紀錄即渲染，且有「當日」選項），移入 `docs/ARCHITECTURE.md` 時已更正。
 
+### Fixed
+- **正式網站直接開啟或重新整理子頁面（`/login`、`/member`、`/why`）回 404 空白頁**：`wrangler.jsonc` 的 `assets` 補上 `"not_found_handling": "single-page-application"`，找不到對應檔案時改回傳 `index.html` 交給前端路由處理。
+  - 起因：6 月由 Cloudflare Pages 改為 Workers 靜態資源部署時移除了 `_redirects`（`c80f960`），但沒有補上 Workers 對應的設定。從首頁點進子頁面不受影響，所以一直沒被發現。
+
 ---
 
 ## [0.9.5] - 2026-10-10
